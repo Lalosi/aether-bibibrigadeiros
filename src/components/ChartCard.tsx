@@ -11,8 +11,8 @@ interface ChartCardProps {
 
 const ChartCard = ({ title, children, actions, className = '' }: ChartCardProps) => {
   return (
-    <SimpleCard title={title} actions={actions} className={`h-80 ${className}`}>
-      <div className="h-64">
+    <SimpleCard title={title} actions={actions} className={`h-80 ${className} animate-fade-in`}>
+      <div className="h-64 animate-float">
         {children}
       </div>
     </SimpleCard>

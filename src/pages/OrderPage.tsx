@@ -1,545 +1,470 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import ProductCard from '@/components/ProductCard';
+import CartItem from '@/components/CartItem';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import { Calendar } from 'lucide-react';
+  Search, 
+  ChevronDown, 
+  ShoppingCart, 
+  X, 
+  ArrowRight,
+  Check
+} from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
-// Produtos exemplo
-const productCategories = [
+// Dados de exemplo
+const categorias = [
+  { id: 'todos', nome: 'Todos' },
+  { id: 'bolos', nome: 'Bolos' },
+  { id: 'tortas', nome: 'Tortas' },
+  { id: 'doces', nome: 'Doces' },
+  { id: 'cupcakes', nome: 'Cupcakes' },
+  { id: 'bebidas', nome: 'Bebidas' },
+];
+
+const produtos = [
   {
-    name: 'Bolos',
-    items: [
-      { id: 1, name: 'Bolo de Chocolate', price: 89.90, image: 'https://picsum.photos/id/175/300/300' },
-      { id: 2, name: 'Bolo Red Velvet', price: 95.90, image: 'https://picsum.photos/id/292/300/300' },
-      { id: 3, name: 'Bolo de Cenoura', price: 75.00, image: 'https://picsum.photos/id/146/300/300' },
-    ]
+    id: 1,
+    nome: 'Bolo de Chocolate',
+    descricao: 'Bolo fofinho de chocolate com cobertura de ganache',
+    preco: 'R$ 45,00',
+    precoUnitario: 45.0,
+    imagem: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=500',
+    disponivel: true,
+    categoria: 'bolos',
+    destaque: true
   },
   {
-    name: 'Doces',
-    items: [
-      { id: 4, name: 'Caixa de Brigadeiros', price: 45.00, image: 'https://picsum.photos/id/125/300/300' },
-      { id: 5, name: 'Caixa de Trufas', price: 55.00, image: 'https://picsum.photos/id/960/300/300' },
-      { id: 6, name: 'Bombons Sortidos', price: 65.00, image: 'https://picsum.photos/id/431/300/300' },
-    ]
+    id: 2,
+    nome: 'Brigadeiros Gourmet',
+    descricao: 'Caixa com 12 brigadeiros gourmet em diversos sabores',
+    preco: 'R$ 25,00',
+    precoUnitario: 25.0,
+    imagem: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?q=80&w=500',
+    disponivel: true,
+    categoria: 'doces',
+    destaque: false
   },
   {
-    name: 'Tortas',
-    items: [
-      { id: 7, name: 'Torta de Limão', price: 75.00, image: 'https://picsum.photos/id/221/300/300' },
-      { id: 8, name: 'Torta de Morango', price: 80.00, image: 'https://picsum.photos/id/324/300/300' },
-      { id: 9, name: 'Cheesecake', price: 85.00, image: 'https://picsum.photos/id/291/300/300' },
-    ]
+    id: 3,
+    nome: 'Torta de Morango',
+    descricao: 'Torta fresca de morango com creme de baunilha',
+    preco: 'R$ 38,00',
+    precoUnitario: 38.0,
+    imagem: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?q=80&w=500',
+    disponivel: true,
+    categoria: 'tortas',
+    destaque: true
+  },
+  {
+    id: 4,
+    nome: 'Cupcake Red Velvet',
+    descricao: 'Cupcake red velvet com cobertura de cream cheese',
+    preco: 'R$ 8,00',
+    precoUnitario: 8.0,
+    imagem: 'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?q=80&w=500',
+    disponivel: true,
+    categoria: 'cupcakes',
+    destaque: false
+  },
+  {
+    id: 5,
+    nome: 'Cheesecake de Frutas Vermelhas',
+    descricao: 'Cheesecake cremoso com calda de frutas vermelhas',
+    preco: 'R$ 42,00',
+    precoUnitario: 42.0,
+    imagem: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?q=80&w=500',
+    disponivel: true,
+    categoria: 'tortas',
+    destaque: false
+  },
+  {
+    id: 6,
+    nome: 'Café Especial',
+    descricao: 'Café especial torrado e moído na hora',
+    preco: 'R$ 7,50',
+    precoUnitario: 7.5,
+    imagem: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?q=80&w=500',
+    disponivel: true,
+    categoria: 'bebidas',
+    destaque: false
   }
 ];
 
+// Tipo para os itens do carrinho
 interface CartItem {
   id: number;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
+  nome: string;
+  preco: string;
+  precoUnitario: number;
+  quantidade: number;
+  imagem: string;
 }
 
 const OrderPage = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
-  const [address, setAddress] = useState('');
-  const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeTab, setActiveTab] = useState('catalogo');
-  
   const { toast } = useToast();
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState('todos');
+  const [busca, setBusca] = useState('');
+  const [carrinhoAberto, setCarrinhoAberto] = useState(false);
+  const [carrinho, setCarrinho] = useState<CartItem[]>([]);
 
-  const addToCart = (product: {id: number, name: string, price: number, image: string}) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
-      
-      if (existingItem) {
-        return prevCart.map(item => 
-          item.id === product.id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        );
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
-      }
-    });
+  // Filtra produtos por categoria e busca
+  const produtosFiltrados = produtos.filter(produto => {
+    const matchesCategory = categoriaSelecionada === 'todos' || produto.categoria === categoriaSelecionada;
+    const matchesSearch = produto.nome.toLowerCase().includes(busca.toLowerCase()) || 
+                          produto.descricao.toLowerCase().includes(busca.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
-    toast({
-      title: 'Produto adicionado',
-      description: `${product.name} foi adicionado ao seu carrinho.`,
-    });
-  };
-
-  const removeFromCart = (id: number) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== id));
-  };
-
-  const updateQuantity = (id: number, quantity: number) => {
-    if (quantity < 1) return;
+  // Destacar produtos em destaque
+  const produtosDestaque = produtos.filter(produto => produto.destaque);
+  
+  // Adicionar ao carrinho
+  const adicionarAoCarrinho = (produtoId: number) => {
+    const produto = produtos.find(p => p.id === produtoId);
     
-    setCart(prevCart => prevCart.map(item => 
-      item.id === id ? { ...item, quantity } : item
+    if (!produto) return;
+    
+    const itemExistente = carrinho.find(item => item.id === produtoId);
+    
+    if (itemExistente) {
+      // Se já existe, aumenta a quantidade
+      setCarrinho(carrinho.map(item =>
+        item.id === produtoId
+          ? { ...item, quantidade: item.quantidade + 1 }
+          : item
+      ));
+    } else {
+      // Se não existe, adiciona novo item
+      setCarrinho([
+        ...carrinho,
+        {
+          id: produto.id,
+          nome: produto.nome,
+          preco: produto.preco,
+          precoUnitario: produto.precoUnitario,
+          quantidade: 1,
+          imagem: produto.imagem
+        }
+      ]);
+    }
+    
+    toast({
+      title: "Produto adicionado",
+      description: `${produto.nome} foi adicionado ao carrinho.`,
+    });
+
+    // Abre o carrinho automaticamente
+    setCarrinhoAberto(true);
+  };
+  
+  // Remover do carrinho
+  const removerDoCarrinho = (produtoId: number) => {
+    setCarrinho(carrinho.filter(item => item.id !== produtoId));
+  };
+  
+  // Atualizar quantidade
+  const atualizarQuantidade = (produtoId: number, novaQuantidade: number) => {
+    setCarrinho(carrinho.map(item =>
+      item.id === produtoId
+        ? { ...item, quantidade: novaQuantidade }
+        : item
     ));
   };
-
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  
+  // Calcular total do carrinho
+  const totalCarrinho = carrinho.reduce(
+    (total, item) => total + item.precoUnitario * item.quantidade,
+    0
+  );
+  
+  // Toggle do carrinho
+  const toggleCarrinho = () => {
+    setCarrinhoAberto(!carrinhoAberto);
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Fechar carrinho ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('#cart-sidebar') && !target.closest('#cart-toggle')) {
+        setCarrinhoAberto(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Finalizar pedido
+  const finalizarPedido = () => {
+    if (carrinho.length === 0) return;
     
-    if (cart.length === 0) {
-      toast({
-        title: 'Carrinho vazio',
-        description: 'Adicione produtos ao carrinho antes de finalizar o pedido.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!name || !email || !phone || !deliveryDate || !address || !paymentMethod) {
-      toast({
-        title: 'Informações incompletas',
-        description: 'Preencha todos os campos obrigatórios.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Simular envio do pedido
     toast({
-      title: 'Pedido enviado com sucesso!',
-      description: 'Em breve entraremos em contato para confirmar seu pedido.',
+      title: "Pedido finalizado!",
+      description: "Seu pedido foi registrado com sucesso.",
+      action: (
+        <Button variant="outline" size="sm">
+          <Check className="h-4 w-4" /> Ok
+        </Button>
+      ),
     });
     
-    // Limpar formulário e carrinho
-    setName('');
-    setEmail('');
-    setPhone('');
-    setDeliveryDate('');
-    setAddress('');
-    setNotes('');
-    setPaymentMethod('');
-    setCart([]);
-    setActiveTab('catalogo');
+    setCarrinho([]);
+    setCarrinhoAberto(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-confectionery-pink/20 to-white">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Logo />
-          <nav className="hidden md:flex space-x-6">
-            <a href="#" className="text-gray-600 hover:text-primary-foreground animate-hover">Início</a>
-            <a href="#" className="text-gray-600 hover:text-primary-foreground animate-hover">Produtos</a>
-            <a href="#" className="text-gray-600 hover:text-primary-foreground animate-hover">Sobre</a>
-            <a href="#" className="text-gray-600 hover:text-primary-foreground animate-hover">Contato</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link to="/login">
-              <Button variant="outline">Login</Button>
-            </Link>
-            <Link to="/signup">
-              <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80">Cadastrar</Button>
-            </Link>
+    <div className="min-h-screen bg-confectionery-gray/10">
+      {/* Header */}
+      <header className="bg-white shadow-sm py-4 px-6 md:px-10 sticky top-0 z-10 glass-effect">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            <Logo size="small" />
+            <nav className="hidden md:flex space-x-6">
+              {categorias.map((categoria) => (
+                <button
+                  key={categoria.id}
+                  onClick={() => setCategoriaSelecionada(categoria.id)}
+                  className={`text-sm font-medium animate-hover ${
+                    categoriaSelecionada === categoria.id
+                      ? 'text-primary-foreground'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {categoria.nome}
+                </button>
+              ))}
+            </nav>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative hidden md:block w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input 
+                placeholder="Buscar produtos..." 
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            <button
+              id="cart-toggle"
+              onClick={toggleCarrinho}
+              className="relative p-2 rounded-full bg-confectionery-pink/20 hover:bg-confectionery-pink/40 transition-colors"
+            >
+              <ShoppingCart size={20} />
+              {carrinho.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                  {carrinho.length}
+                </span>
+              )}
+            </button>
+            
+            <div className="flex md:hidden">
+              <button className="p-2">
+                <ChevronDown />
+              </button>
+            </div>
           </div>
         </div>
       </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Faça seu Pedido</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">Nossos produtos são feitos com ingredientes selecionados e muito carinho. Faça seu pedido online e receba no conforto da sua casa.</p>
+      
+      {/* Busca Mobile */}
+      <div className="md:hidden p-4 bg-gray-50">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input 
+            placeholder="Buscar produtos..." 
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-9"
+          />
         </div>
-
-        <Tabs defaultValue="catalogo" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-8">
-            <TabsTrigger 
-              value="catalogo" 
-              onClick={() => setActiveTab('catalogo')}
-              className={activeTab === 'catalogo' ? 'bg-confectionery-pink text-primary-foreground' : ''}
-            >
-              Catálogo
-            </TabsTrigger>
-            <TabsTrigger 
-              value="carrinho" 
-              onClick={() => setActiveTab('carrinho')}
-              className={activeTab === 'carrinho' ? 'bg-confectionery-pink text-primary-foreground' : ''}
-            >
-              Carrinho ({cart.length})
-            </TabsTrigger>
-            <TabsTrigger 
-              value="checkout" 
-              onClick={() => setActiveTab('checkout')}
-              className={activeTab === 'checkout' ? 'bg-confectionery-pink text-primary-foreground' : ''}
-            >
-              Checkout
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="catalogo">
-            {productCategories.map((category, index) => (
-              <div key={index} className="mb-12">
-                <h2 className="text-2xl font-semibold mb-6 gradient-text inline-block">{category.name}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {category.items.map((product) => (
-                    <Card key={product.id} className="overflow-hidden card-hover">
-                      <img 
-                        src={product.image} 
-                        alt={product.name} 
-                        className="w-full h-48 object-cover"
-                      />
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-lg">{product.name}</h3>
-                          <span className="font-semibold">R$ {product.price.toFixed(2)}</span>
-                        </div>
-                        <Button 
-                          onClick={() => addToCart(product)} 
-                          className="w-full mt-2 bg-confectionery-pink hover:bg-confectionery-pink/80"
-                        >
-                          Adicionar ao Carrinho
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
+      </div>
+      
+      {/* Categorias Mobile */}
+      <div className="md:hidden p-4 overflow-x-auto whitespace-nowrap">
+        {categorias.map((categoria) => (
+          <button
+            key={categoria.id}
+            onClick={() => setCategoriaSelecionada(categoria.id)}
+            className={`mr-3 px-4 py-2 rounded-full text-sm ${
+              categoriaSelecionada === categoria.id
+                ? 'bg-confectionery-pink text-primary-foreground'
+                : 'bg-white border border-gray-200'
+            }`}
+          >
+            {categoria.nome}
+          </button>
+        ))}
+      </div>
+      
+      <main className="max-w-7xl mx-auto p-6">
+        {/* Banner/Destaques */}
+        <section className="mb-10">
+          <h2 className="text-2xl font-medium mb-4">Destaques</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {produtosDestaque.map((produto) => (
+              <ProductCard
+                key={produto.id}
+                id={produto.id}
+                nome={produto.nome}
+                descricao={produto.descricao}
+                preco={produto.preco}
+                imagem={produto.imagem}
+                disponivel={produto.disponivel}
+                categoria={categorias.find(cat => cat.id === produto.categoria)?.nome || ''}
+                onAddToCart={() => adicionarAoCarrinho(produto.id)}
+              />
             ))}
-          </TabsContent>
-
-          <TabsContent value="carrinho">
-            {cart.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="bg-confectionery-pink/10 p-8 rounded-xl inline-block mb-4">
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="8" cy="21" r="1"></circle>
-                    <circle cx="19" cy="21" r="1"></circle>
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">Seu carrinho está vazio</h2>
-                <p className="text-gray-500 mb-6">Adicione alguns produtos deliciosos para continuar</p>
+          </div>
+        </section>
+        
+        {/* Lista de Produtos */}
+        <section>
+          <h2 className="text-2xl font-medium mb-4">Nossos Produtos</h2>
+          
+          {produtosFiltrados.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-gray-500">Nenhum produto encontrado.</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => {
+                  setBusca('');
+                  setCategoriaSelecionada('todos');
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {produtosFiltrados.map((produto) => (
+                <ProductCard
+                  key={produto.id}
+                  id={produto.id}
+                  nome={produto.nome}
+                  descricao={produto.descricao}
+                  preco={produto.preco}
+                  imagem={produto.imagem}
+                  disponivel={produto.disponivel}
+                  categoria={categorias.find(cat => cat.id === produto.categoria)?.nome || ''}
+                  onAddToCart={() => adicionarAoCarrinho(produto.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+      
+      {/* Carrinho Lateral */}
+      <div 
+        id="cart-sidebar"
+        className={`fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-lg transform transition-transform duration-300 z-20 ${
+          carrinhoAberto ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg font-medium">Seu Carrinho</h3>
+            <button onClick={() => setCarrinhoAberto(false)} className="p-2">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4">
+            {carrinho.length === 0 ? (
+              <div className="text-center py-10">
+                <ShoppingCart size={40} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">Seu carrinho está vazio</p>
                 <Button 
-                  onClick={() => setActiveTab('catalogo')} 
-                  className="bg-confectionery-pink hover:bg-confectionery-pink/80"
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => setCarrinhoAberto(false)}
                 >
-                  Voltar ao Catálogo
+                  Continuar Comprando
                 </Button>
               </div>
             ) : (
-              <div>
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
-                  <table className="w-full">
-                    <thead className="bg-confectionery-pink/10">
-                      <tr>
-                        <th className="text-left py-4 px-6 font-medium text-gray-600">Produto</th>
-                        <th className="text-center py-4 px-6 font-medium text-gray-600">Quantidade</th>
-                        <th className="text-right py-4 px-6 font-medium text-gray-600">Valor</th>
-                        <th className="text-right py-4 px-6 font-medium text-gray-600">Subtotal</th>
-                        <th className="py-4 px-6"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cart.map(item => (
-                        <tr key={item.id} className="border-b border-gray-100 hover:bg-confectionery-pink/5 animate-hover">
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-4">
-                              <img 
-                                src={item.image} 
-                                alt={item.name} 
-                                className="w-16 h-16 rounded-lg object-cover"
-                              />
-                              <span className="font-medium">{item.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center justify-center">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="h-8 w-8 rounded-full"
-                              >
-                                -
-                              </Button>
-                              <span className="w-10 text-center">{item.quantity}</span>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="h-8 w-8 rounded-full"
-                              >
-                                +
-                              </Button>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-right">R$ {item.price.toFixed(2)}</td>
-                          <td className="py-4 px-6 text-right font-semibold">R$ {(item.price * item.quantity).toFixed(2)}</td>
-                          <td className="py-4 px-6 text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => removeFromCart(item.id)}
-                              className="text-destructive hover:bg-destructive/10"
-                            >
-                              Remover
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-confectionery-pink/5">
-                      <tr>
-                        <td colSpan={3} className="py-4 px-6 text-right font-semibold">Total:</td>
-                        <td className="py-4 px-6 text-right font-bold text-lg">R$ {calculateTotal().toFixed(2)}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-
-                <div className="flex justify-between">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setActiveTab('catalogo')}
-                  >
-                    Continuar Comprando
-                  </Button>
-                  <Button 
-                    onClick={() => setActiveTab('checkout')}
-                    className="bg-confectionery-pink hover:bg-confectionery-pink/80"
-                  >
-                    Finalizar Pedido
-                  </Button>
-                </div>
-              </div>
+              <>
+                {carrinho.map((item) => (
+                  <CartItem
+                    key={item.id}
+                    id={item.id}
+                    nome={item.nome}
+                    preco={`R$ ${(item.precoUnitario * item.quantidade).toFixed(2).replace('.', ',')}`}
+                    precoUnitario={item.precoUnitario}
+                    quantidade={item.quantidade}
+                    imagem={item.imagem}
+                    onRemove={removerDoCarrinho}
+                    onUpdateQuantity={atualizarQuantidade}
+                  />
+                ))}
+              </>
             )}
-          </TabsContent>
-
-          <TabsContent value="checkout">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                  <h2 className="text-lg font-semibold mb-6">Informações de Contato</h2>
-                  
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="name" className="block text-sm font-medium mb-1">Nome Completo *</label>
-                        <Input
-                          id="name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Digite seu nome completo"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium mb-1">Email *</label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="Digite seu email"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="phone" className="block text-sm font-medium mb-1">Telefone *</label>
-                        <Input
-                          id="phone"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="(00) 00000-0000"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="deliveryDate" className="block text-sm font-medium mb-1">Data de Entrega *</label>
-                        <div className="relative">
-                          <Input
-                            id="deliveryDate"
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
-                          />
-                          <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="address" className="block text-sm font-medium mb-1">Endereço de Entrega *</label>
-                      <Input
-                        id="address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Rua, número, complemento, bairro, cidade, estado"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="notes" className="block text-sm font-medium mb-1">Observações</label>
-                      <Textarea
-                        id="notes"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Instruções especiais, alergias, etc."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h2 className="text-lg font-semibold mb-6">Forma de Pagamento *</h2>
-                  
-                  <div className="space-y-4">
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma forma de pagamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="credit">Cartão de Crédito</SelectItem>
-                        <SelectItem value="debit">Cartão de Débito</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="cash">Dinheiro na Entrega</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {paymentMethod === 'credit' || paymentMethod === 'debit' ? (
-                      <div className="p-4 rounded-lg border border-confectionery-pink/20 bg-confectionery-pink/5">
-                        <p className="text-sm text-gray-600 mb-4">Os dados do cartão serão solicitados pelo nosso processador de pagamentos após a confirmação do pedido.</p>
-                      </div>
-                    ) : paymentMethod === 'pix' ? (
-                      <div className="p-4 rounded-lg border border-confectionery-pink/20 bg-confectionery-pink/5">
-                        <p className="text-sm text-gray-600 mb-4">Um QR code PIX será gerado após a confirmação do pedido.</p>
-                      </div>
-                    ) : paymentMethod === 'cash' ? (
-                      <div className="p-4 rounded-lg border border-confectionery-pink/20 bg-confectionery-pink/5">
-                        <p className="text-sm text-gray-600 mb-4">Por favor, tenha o valor exato para facilitar a entrega.</p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-xl shadow-sm p-6 sticky top-6">
-                  <h2 className="text-lg font-semibold mb-6">Resumo do Pedido</h2>
-                  
-                  <div className="space-y-4 mb-6">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 inline-flex items-center justify-center bg-confectionery-pink/20 rounded-full text-xs">
-                            {item.quantity}
-                          </span>
-                          <span>{item.name}</span>
-                        </div>
-                        <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="border-t border-gray-200 pt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>R$ {calculateTotal().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Taxa de entrega</span>
-                      <span>Grátis</span>
-                    </div>
-                    <div className="flex justify-between items-center font-semibold text-lg pt-2 border-t border-gray-200">
-                      <span>Total</span>
-                      <span>R$ {calculateTotal().toFixed(2)}</span>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleSubmitOrder} 
-                    className="w-full mt-6 bg-confectionery-pink hover:bg-confectionery-pink/80"
-                    disabled={cart.length === 0}
-                  >
-                    Finalizar Pedido
-                  </Button>
-                  
-                  <p className="text-xs text-gray-500 text-center mt-4">
-                    Ao finalizar o pedido você concorda com nossos Termos de Serviço e Política de Privacidade
-                  </p>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      <footer className="bg-white border-t border-gray-100 py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <Logo />
-              <p className="text-gray-500 mt-4">Delícias artesanais feitas com amor e os melhores ingredientes.</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-4">Links Rápidos</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-500 hover:text-primary-foreground animate-hover">Início</a></li>
-                <li><a href="#" className="text-gray-500 hover:text-primary-foreground animate-hover">Catálogo</a></li>
-                <li><a href="#" className="text-gray-500 hover:text-primary-foreground animate-hover">Sobre Nós</a></li>
-                <li><a href="#" className="text-gray-500 hover:text-primary-foreground animate-hover">Contato</a></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium mb-4">Contato</h3>
-              <ul className="space-y-2 text-gray-500">
-                <li>Rua das Flores, 123</li>
-                <li>São Paulo, SP</li>
-                <li>contato@aether.com</li>
-                <li>(11) 99999-9999</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium mb-4">Horário</h3>
-              <ul className="space-y-2 text-gray-500">
-                <li>Segunda a Sexta: 9h às 18h</li>
-                <li>Sábado: 9h às 14h</li>
-                <li>Domingo: Fechado</li>
-              </ul>
-            </div>
           </div>
-          <div className="border-t border-gray-100 mt-8 pt-8 text-center text-gray-500 text-sm">
-            <p>&copy; 2025 AETHER. Todos os direitos reservados.</p>
+          
+          {carrinho.length > 0 && (
+            <div className="border-t p-4">
+              <div className="flex justify-between mb-4">
+                <span className="font-medium">Subtotal</span>
+                <span className="font-medium">R$ {totalCarrinho.toFixed(2).replace('.', ',')}</span>
+              </div>
+              <Button 
+                className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground btn-hover"
+                onClick={finalizarPedido}
+              >
+                Finalizar Pedido <ArrowRight size={16} className="ml-2" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full mt-2"
+                onClick={() => setCarrinhoAberto(false)}
+              >
+                Continuar Comprando
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Overlay para o carrinho */}
+      {carrinhoAberto && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-10"
+          onClick={() => setCarrinhoAberto(false)}
+        />
+      )}
+      
+      {/* Footer */}
+      <footer className="bg-white border-t py-6">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <Logo size="small" />
+          <p className="text-sm text-gray-500 mt-4">
+            © 2023 AETHER Confeitaria. Todos os direitos reservados.
+          </p>
+          <div className="flex justify-center gap-4 mt-4">
+            <Link to="/" className="text-sm text-gray-500 hover:text-primary-foreground animate-hover">
+              Início
+            </Link>
+            <Link to="/sobre" className="text-sm text-gray-500 hover:text-primary-foreground animate-hover">
+              Sobre
+            </Link>
+            <Link to="/contato" className="text-sm text-gray-500 hover:text-primary-foreground animate-hover">
+              Contato
+            </Link>
+            <Link to="/termos" className="text-sm text-gray-500 hover:text-primary-foreground animate-hover">
+              Termos
+            </Link>
           </div>
         </div>
       </footer>

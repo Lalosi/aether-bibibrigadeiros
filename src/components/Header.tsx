@@ -5,7 +5,7 @@ import UserMenu from './UserMenu';
 
 const Header = ({ title }: { title: string }) => {
   return (
-    <header className="flex justify-between items-center py-4 px-8 animate-fade-in">
+    <header className="flex justify-between items-center py-4 px-8 animate-fade-in bg-white/50 backdrop-blur-sm border-b border-confectionery-pink/20">
       <h1 className="text-2xl font-semibold">{title}</h1>
       <div className="flex items-center gap-4">
         <SearchBar />

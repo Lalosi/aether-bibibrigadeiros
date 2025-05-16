@@ -68,7 +68,7 @@ export default {
 					peach: '#FDE1D3',
 					yellow: '#FEF7CD',
 					green: '#F2FCE2',
-					blue: '#D3E4FD',
+					blue: '#0B2559', // Alterado de '#D3E4FD' para '#0B2559'
 					purple: '#E5DEFF',
 					gray: '#F1F0FB',
 				}

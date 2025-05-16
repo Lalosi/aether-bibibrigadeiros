@@ -71,3 +71,23 @@
 .gradient-text {
   @apply bg-gradient-to-r from-confectionery-pink via-confectionery-peach to-confectionery-yellow bg-clip-text text-transparent;
 }
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.btn-hover {
+  @apply relative overflow-hidden before:absolute before:inset-0 before:bg-white/20 before:scale-x-0 before:opacity-0 before:transition-transform hover:before:scale-x-100 hover:before:opacity-100 before:origin-left;
+}

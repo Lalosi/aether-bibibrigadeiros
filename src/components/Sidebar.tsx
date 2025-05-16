@@ -19,7 +19,7 @@ const sidebarItems = [
   { name: 'Relatórios', path: '/relatorios', icon: FileText },
   { name: 'Clientes', path: '/clientes', icon: Users },
   { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart },
-  { name: 'Loja', path: '/loja', icon: Store },
+  { name: 'Loja', path: '/comprar', icon: Store },
 ];
 
 const Sidebar = () => {

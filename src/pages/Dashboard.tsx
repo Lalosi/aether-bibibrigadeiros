@@ -28,7 +28,7 @@ const vendas = [
   { name: 'Jun', vendas: 23000, lucro: 14000 },
 ];
 
-const vendasMensais = [
+const vendasSemanais = [
   { name: 'Dom', vendas: 12000, compras: 8000 },
   { name: 'Seg', vendas: 19000, compras: 11000 },
   { name: 'Ter', vendas: 15000, compras: 9000 },
@@ -101,14 +101,14 @@ const Dashboard = () => {
               />
               <Legend />
               <Line type="monotone" dataKey="vendas" stroke="#F9A8D4" strokeWidth={2} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="lucro" stroke="#A5F3FC" strokeWidth={2} />
+              <Line type="monotone" dataKey="lucro" stroke="#0B2559" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="Vendas e Compras" actions={<span className="text-xs bg-confectionery-yellow/30 px-2 py-1 rounded-md">Semanal</span>}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={vendasMensais}>
+            <BarChart data={vendasSemanais}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
@@ -122,7 +122,7 @@ const Dashboard = () => {
               />
               <Legend />
               <Bar dataKey="vendas" fill="#F9A8D4" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="compras" fill="#A5F3FC" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="compras" fill="#0B2559" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -164,7 +164,7 @@ const Dashboard = () => {
           </div>
         </SimpleCard>
 
-        <SimpleCard title="Items com Estoque Baixo" actions={<button className="text-sm text-primary-foreground hover:underline">Ver Todos</button>}>
+        <SimpleCard title="Itens com Estoque Baixo" actions={<button className="text-sm text-primary-foreground hover:underline">Ver Todos</button>}>
           <div className="space-y-4">
             {produtosBaixoEstoque.map((produto, index) => (
               <div key={index} className="flex items-center gap-4 p-3 rounded-lg border border-confectionery-pink/20 hover:border-confectionery-pink animate-hover">
