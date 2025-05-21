@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import { 
   Home, 
@@ -12,9 +12,10 @@ import {
   Settings, 
   LogOut 
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const sidebarItems = [
-  { name: 'Dashboard', path: '/', icon: Home },
+  { name: 'Dashboard', path: '/dashboard', icon: Home },
   { name: 'Estoque', path: '/estoque', icon: PackageOpen },
   { name: 'Relatórios', path: '/relatorios', icon: FileText },
   { name: 'Clientes', path: '/clientes', icon: Users },
@@ -24,9 +25,19 @@ const sidebarItems = [
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+  
+  const handleLogout = () => {
+    toast({
+      title: 'Logout realizado',
+      description: 'Você saiu da sua conta com sucesso',
+    });
+    navigate('/login');
   };
 
   return (
@@ -57,7 +68,10 @@ const Sidebar = () => {
           <Settings size={18} />
           <span>Configurações</span>
         </Link>
-        <button className="flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 w-full text-left animate-hover">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 w-full text-left animate-hover"
+        >
           <LogOut size={18} />
           <span>Sair</span>
         </button>
