@@ -3,24 +3,18 @@ import React from 'react';
 
 const Logo = ({ size = 'default' }: { size?: 'small' | 'default' | 'large' }) => {
   const sizeClasses = {
-    small: 'text-lg',
-    default: 'text-2xl',
-    large: 'text-4xl',
+    small: 'h-6',
+    default: 'h-8',
+    large: 'h-12',
   };
 
   return (
     <div className="flex items-center gap-2">
-      <div className="relative">
-        <div className="w-8 h-8 rounded-full bg-confectionery-pink flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full border-2 border-confectionery-peach flex items-center justify-center">
-            <div className="w-3 h-3 rounded-full bg-confectionery-purple"></div>
-          </div>
-        </div>
-        <div className="absolute top-1 right-0 w-2 h-2 rounded-full bg-confectionery-green"></div>
-      </div>
-      <h1 className={`font-semibold ${sizeClasses[size]} gradient-text tracking-tight`}>
-        AETHER
-      </h1>
+      <img 
+        src="/lovable-uploads/73d11f78-9223-4e00-bb4a-cc631802c552.png" 
+        alt="AETHER Logo" 
+        className={`${sizeClasses[size]}`} 
+      />
     </div>
   );
 };
