@@ -4,6 +4,7 @@ import MainLayout from '@/components/MainLayout';
 import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NovoProdutoDialog } from '@/components/dialogs/NovoProdutoDialog';
 import { 
   Table, 
   TableBody, 
@@ -22,8 +23,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-// Dados de exemplo
-const produtosEstoque = [
+// Dados de exemplo - movido para estado
+const produtosEstoqueInicial = [
   { id: 1, nome: 'Bolo de Chocolate', categoria: 'Bolos', preco: 'R$ 40,00', estoque: 25, status: 'Disponível' },
   { id: 2, nome: 'Brigadeiros (20un)', categoria: 'Doces', preco: 'R$ 25,00', estoque: 8, status: 'Baixo' },
   { id: 3, nome: 'Torta de Morango', categoria: 'Tortas', preco: 'R$ 35,00', estoque: 12, status: 'Disponível' },
@@ -38,6 +39,8 @@ const categorias = ['Todos', 'Bolos', 'Tortas', 'Doces', 'Cupcakes'];
 const EstoquePage = () => {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
   const [busca, setBusca] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [produtosEstoque, setProdutosEstoque] = useState(produtosEstoqueInicial);
   
   const produtosFiltrados = produtosEstoque.filter(produto => {
     const matchesCategoria = categoriaSelecionada === 'Todos' || produto.categoria === categoriaSelecionada;
@@ -45,11 +48,18 @@ const EstoquePage = () => {
     return matchesCategoria && matchesBusca;
   });
 
+  const handleNovoProduto = (novoProduto: any) => {
+    setProdutosEstoque([novoProduto, ...produtosEstoque]);
+  };
+
   return (
     <MainLayout title="Gerenciamento de Estoque">
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground">
+          <Button 
+            className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
+            onClick={() => setDialogOpen(true)}
+          >
             <Plus className="mr-2 h-4 w-4" /> Novo Produto
           </Button>
           <div className="flex items-center gap-2">
@@ -142,6 +152,12 @@ const EstoquePage = () => {
           </div>
         </div>
       </SimpleCard>
+
+      <NovoProdutoDialog 
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={handleNovoProduto}
+      />
     </MainLayout>
   );
 };

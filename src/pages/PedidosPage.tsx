@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NovoPedidoDialog } from '@/components/dialogs/NovoPedidoDialog';
 import { 
   Table, 
   TableBody, 
@@ -22,9 +23,9 @@ import {
   Check
 } from 'lucide-react';
 
-// Dados de exemplo
-const pedidos = [
-  { 
+// Dados de exemplo - movido para estado
+const pedidosIniciais = [
+  {
     id: '#PED001', 
     cliente: 'Maria Silva', 
     data: '15/05/2023', 
@@ -88,11 +89,21 @@ const statusColorMap = {
 };
 
 const PedidosPage = () => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pedidos, setPedidos] = useState(pedidosIniciais);
+
+  const handleNovoPedido = (novoPedido: any) => {
+    setPedidos([novoPedido, ...pedidos]);
+  };
+
   return (
     <MainLayout title="Gerenciamento de Pedidos">
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground">
+          <Button 
+            className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
+            onClick={() => setDialogOpen(true)}
+          >
             Novo Pedido
           </Button>
           
@@ -196,6 +207,12 @@ const PedidosPage = () => {
           </div>
         </div>
       </SimpleCard>
+
+      <NovoPedidoDialog 
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={handleNovoPedido}
+      />
     </MainLayout>
   );
 };

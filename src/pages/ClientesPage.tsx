@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NovoClienteDialog } from '@/components/dialogs/NovoClienteDialog';
 import {
   Table,
   TableBody,
@@ -25,8 +26,8 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// Dados de exemplo
-const clientes = [
+// Dados de exemplo - movido para estado
+const clientesIniciais = [
   {
     id: 1,
     nome: 'Maria Silva',
@@ -85,10 +86,20 @@ const clientes = [
 ];
 
 const ClientesPage = () => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [clientes, setClientes] = useState(clientesIniciais);
+
+  const handleNovoCliente = (novoCliente: any) => {
+    setClientes([novoCliente, ...clientes]);
+  };
+
   return (
     <MainLayout title="Gerenciamento de Clientes">
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-        <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground">
+        <Button 
+          className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
+          onClick={() => setDialogOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" /> Novo Cliente
         </Button>
         
@@ -209,6 +220,12 @@ const ClientesPage = () => {
           </div>
         </div>
       </SimpleCard>
+
+      <NovoClienteDialog 
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={handleNovoCliente}
+      />
     </MainLayout>
   );
 };
