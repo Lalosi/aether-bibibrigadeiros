@@ -5,6 +5,7 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NovoClienteDialog } from '@/components/dialogs/NovoClienteDialog';
+import { SQLPopup } from '@/components/SQLPopup';
 import {
   Table,
   TableBody,
@@ -88,9 +89,58 @@ const clientesIniciais = [
 const ClientesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clientes, setClientes] = useState(clientesIniciais);
+  const [sqlPopupOpen, setSqlPopupOpen] = useState(false);
+  const [sqlPopupTitle, setSqlPopupTitle] = useState('');
+  const [sqlPopupCommand, setSqlPopupCommand] = useState('');
+  const [busca, setBusca] = useState('');
 
   const handleNovoCliente = (novoCliente: any) => {
     setClientes([novoCliente, ...clientes]);
+  };
+
+  const showSQLPopup = (title: string, command: string) => {
+    setSqlPopupTitle(title);
+    setSqlPopupCommand(command);
+    setSqlPopupOpen(true);
+  };
+
+  const handleNovoClienteClick = () => {
+    setDialogOpen(true);
+    showSQLPopup(
+      'Comando: Inserir Novo Cliente',
+      `INSERT INTO Clientes (nome, email, telefone, status)\nVALUES ('Ana Silva', 'ana.silva@email.com', '(11) 98765-4321', 'Ativo');`
+    );
+  };
+
+  const handleFiltrarClick = () => {
+    showSQLPopup(
+      'Comando: Filtrar Clientes',
+      `SELECT * FROM Clientes\nWHERE status = 'Ativo'\nORDER BY nome ASC;`
+    );
+  };
+
+  const handleBuscaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBusca(e.target.value);
+    if (e.target.value) {
+      showSQLPopup(
+        'Comando: Buscar Cliente por Nome',
+        `SELECT * FROM Clientes\nWHERE nome LIKE '%${e.target.value}%';`
+      );
+    }
+  };
+
+  const handleEditarClick = (clienteId: number) => {
+    showSQLPopup(
+      'Comando: Editar Cliente',
+      `UPDATE Clientes\nSET telefone = '(11) 99999-8888'\nWHERE id_cliente = ${clienteId};`
+    );
+  };
+
+  const handleDeletarClick = (clienteId: number) => {
+    showSQLPopup(
+      'Comando: Deletar Cliente',
+      `DELETE FROM Clientes\nWHERE id_cliente = ${clienteId};`
+    );
   };
 
   return (
@@ -98,20 +148,30 @@ const ClientesPage = () => {
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
         <Button 
           className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
-          onClick={() => setDialogOpen(true)}
+          onClick={handleNovoClienteClick}
         >
           <Plus className="mr-2 h-4 w-4" /> Novo Cliente
         </Button>
         
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-2"
+            onClick={handleFiltrarClick}
+          >
             <Filter className="h-4 w-4" />
             <span>Filtrar</span>
           </Button>
           
           <div className="relative w-64">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Buscar clientes..." className="pl-8" />
+            <Input 
+              placeholder="Buscar clientes..." 
+              className="pl-8" 
+              value={busca}
+              onChange={handleBuscaChange}
+            />
           </div>
         </div>
       </div>
@@ -184,10 +244,19 @@ const ClientesPage = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleEditarClick(cliente.id)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeletarClick(cliente.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -225,6 +294,13 @@ const ClientesPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleNovoCliente}
+      />
+
+      <SQLPopup
+        open={sqlPopupOpen}
+        onOpenChange={setSqlPopupOpen}
+        title={sqlPopupTitle}
+        sqlCommand={sqlPopupCommand}
       />
     </MainLayout>
   );

@@ -5,6 +5,7 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NovoProdutoDialog } from '@/components/dialogs/NovoProdutoDialog';
+import { SQLPopup } from '@/components/SQLPopup';
 import { 
   Table, 
   TableBody, 
@@ -41,6 +42,9 @@ const EstoquePage = () => {
   const [busca, setBusca] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [produtosEstoque, setProdutosEstoque] = useState(produtosEstoqueInicial);
+  const [sqlPopupOpen, setSqlPopupOpen] = useState(false);
+  const [sqlPopupTitle, setSqlPopupTitle] = useState('');
+  const [sqlPopupCommand, setSqlPopupCommand] = useState('');
   
   const produtosFiltrados = produtosEstoque.filter(produto => {
     const matchesCategoria = categoriaSelecionada === 'Todos' || produto.categoria === categoriaSelecionada;
@@ -52,13 +56,47 @@ const EstoquePage = () => {
     setProdutosEstoque([novoProduto, ...produtosEstoque]);
   };
 
+  const showSQLPopup = (title: string, command: string) => {
+    setSqlPopupTitle(title);
+    setSqlPopupCommand(command);
+    setSqlPopupOpen(true);
+  };
+
+  const handleNovoProdutoClick = () => {
+    setDialogOpen(true);
+    showSQLPopup(
+      'Comando: Inserir Novo Produto',
+      `INSERT INTO Produtos (nome, preco_venda, preco_custo, qtd_estoque, categoria_id)\nVALUES ('Bolo de Cenoura', 45.50, 15.20, 30, 1);`
+    );
+  };
+
+  const handleBuscaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBusca(e.target.value);
+    if (e.target.value) {
+      showSQLPopup(
+        'Comando: Buscar Produto por Nome',
+        `SELECT * FROM Produtos\nWHERE nome LIKE '%${e.target.value}%';`
+      );
+    }
+  };
+
+  const handleCategoriaChange = (categoria: string) => {
+    setCategoriaSelecionada(categoria);
+    if (categoria !== 'Todos') {
+      showSQLPopup(
+        'Comando: Filtrar por Categoria',
+        `SELECT * FROM Produtos\nWHERE categoria_id = 1\nORDER BY nome ASC;`
+      );
+    }
+  };
+
   return (
     <MainLayout title="Gerenciamento de Estoque">
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Button 
             className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
-            onClick={() => setDialogOpen(true)}
+            onClick={handleNovoProdutoClick}
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Produto
           </Button>
@@ -66,7 +104,7 @@ const EstoquePage = () => {
             <span className="text-sm font-medium">Categoria:</span>
             <select
               value={categoriaSelecionada}
-              onChange={(e) => setCategoriaSelecionada(e.target.value)}
+              onChange={(e) => handleCategoriaChange(e.target.value)}
               className="rounded-md border border-confectionery-pink/20 px-3 py-1"
             >
               {categorias.map((categoria) => (
@@ -82,7 +120,7 @@ const EstoquePage = () => {
             placeholder="Buscar produtos..." 
             className="pl-8" 
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={handleBuscaChange}
           />
         </div>
       </div>
@@ -157,6 +195,13 @@ const EstoquePage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleNovoProduto}
+      />
+
+      <SQLPopup
+        open={sqlPopupOpen}
+        onOpenChange={setSqlPopupOpen}
+        title={sqlPopupTitle}
+        sqlCommand={sqlPopupCommand}
       />
     </MainLayout>
   );
