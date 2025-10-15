@@ -77,22 +77,6 @@ export const NovoProdutoDialog = ({ open, onOpenChange, onSuccess, onShowSQL }: 
       onShowSQL('Comando: Inserir Novo Produto', sqlCommand);
     }
 
-    toast({
-      title: "✅ Produto adicionado com sucesso!",
-      description: (
-        <div className="mt-2 space-y-2">
-          <p className="text-sm">O registro foi inserido no banco de dados.</p>
-          <div className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
-            {sqlCommand}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            🖋️ Novo registro inserido na tabela Produto às {new Date().toLocaleTimeString('pt-BR')}
-          </p>
-        </div>
-      ),
-      duration: 5000,
-    });
-
     onSuccess(novoProduto);
     form.reset();
     setIsSubmitting(false);
