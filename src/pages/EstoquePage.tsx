@@ -64,10 +64,6 @@ const EstoquePage = () => {
 
   const handleNovoProdutoClick = () => {
     setDialogOpen(true);
-    showSQLPopup(
-      'Comando: Inserir Novo Produto',
-      `INSERT INTO Produtos (nome, preco_venda, preco_custo, qtd_estoque, categoria_id)\nVALUES ('Bolo de Cenoura', 45.50, 15.20, 30, 1);`
-    );
   };
 
   const handleBuscaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +191,7 @@ const EstoquePage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleNovoProduto}
+        onShowSQL={showSQLPopup}
       />
 
       <SQLPopup

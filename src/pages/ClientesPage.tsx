@@ -106,10 +106,6 @@ const ClientesPage = () => {
 
   const handleNovoClienteClick = () => {
     setDialogOpen(true);
-    showSQLPopup(
-      'Comando: Inserir Novo Cliente',
-      `INSERT INTO Clientes (nome, email, telefone, status)\nVALUES ('Ana Silva', 'ana.silva@email.com', '(11) 98765-4321', 'Ativo');`
-    );
   };
 
   const handleFiltrarClick = () => {
@@ -294,6 +290,7 @@ const ClientesPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleNovoCliente}
+        onShowSQL={showSQLPopup}
       />
 
       <SQLPopup

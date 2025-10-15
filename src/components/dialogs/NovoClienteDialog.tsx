@@ -37,9 +37,10 @@ interface NovoClienteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (cliente: any) => void;
+  onShowSQL?: (title: string, command: string) => void;
 }
 
-export const NovoClienteDialog = ({ open, onOpenChange, onSuccess }: NovoClienteDialogProps) => {
+export const NovoClienteDialog = ({ open, onOpenChange, onSuccess, onShowSQL }: NovoClienteDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<ClienteFormData>({
@@ -73,8 +74,12 @@ export const NovoClienteDialog = ({ open, onOpenChange, onSuccess }: NovoCliente
     };
 
     // SQL simulado
-    const sqlCommand = `INSERT INTO Cliente (nome, cpf, telefone, endereco, email, tipo) 
-VALUES ('${data.nome}', '${data.cpf}', '${data.telefone}', '${data.endereco}', '${data.email}', '${data.tipo}')`;
+    const sqlCommand = `INSERT INTO Clientes (nome, cpf, telefone, endereco, email, tipo, status)\nVALUES ('${data.nome}', '${data.cpf}', '${data.telefone}', '${data.endereco}', '${data.email}', '${data.tipo}', 'Ativo')`;
+
+    // Mostrar popup SQL
+    if (onShowSQL) {
+      onShowSQL('Comando: Inserir Novo Cliente', sqlCommand);
+    }
 
     toast({
       title: "✅ Cliente adicionado com sucesso!",

@@ -36,9 +36,10 @@ interface NovoProdutoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (produto: any) => void;
+  onShowSQL?: (title: string, command: string) => void;
 }
 
-export const NovoProdutoDialog = ({ open, onOpenChange, onSuccess }: NovoProdutoDialogProps) => {
+export const NovoProdutoDialog = ({ open, onOpenChange, onSuccess, onShowSQL }: NovoProdutoDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<ProdutoFormData>({
@@ -69,8 +70,12 @@ export const NovoProdutoDialog = ({ open, onOpenChange, onSuccess }: NovoProduto
     };
 
     // SQL simulado
-    const sqlCommand = `INSERT INTO Produto (nome, categoria, preco, estoque, fornecedor) 
-VALUES ('${data.nome}', '${data.categoria}', '${data.preco}', ${data.estoque}, '${data.fornecedor}')`;
+    const sqlCommand = `INSERT INTO Produtos (nome, categoria, preco_venda, preco_custo, qtd_estoque, fornecedor)\nVALUES ('${data.nome}', '${data.categoria}', ${data.preco}, 15.20, ${data.estoque}, '${data.fornecedor}')`;
+
+    // Mostrar popup SQL
+    if (onShowSQL) {
+      onShowSQL('Comando: Inserir Novo Produto', sqlCommand);
+    }
 
     toast({
       title: "✅ Produto adicionado com sucesso!",
