@@ -2,43 +2,56 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
-import { 
-  Home, 
-  PackageOpen, 
-  FileText, 
-  Users, 
-  ShoppingCart, 
-  Store, 
-  Settings, 
-  LogOut 
+import {
+  Home,
+  PackageOpen,
+  FileText,
+  Users,
+  ShoppingCart,
+  Store,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { config } from '@/lib/config';
+import type { AppRole } from '@/integrations/supabase/client';
 
-const sidebarItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: Home },
-  { name: 'Estoque', path: '/estoque', icon: PackageOpen },
-  { name: 'Relatórios', path: '/relatorios', icon: FileText },
-  { name: 'Clientes', path: '/clientes', icon: Users },
-  { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart },
-  { name: 'Loja', path: '/comprar', icon: Store },
-];
+type Item = {
+  name: string;
+  path: string;
+  icon: React.ComponentType<{ size?: number }>;
+  show: boolean;
+  allow: AppRole[];
+};
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-  
-  const handleLogout = () => {
+  const { role, signOut } = useAuth();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: 'Logout realizado',
       description: 'Você saiu da sua conta com sucesso',
     });
     navigate('/login');
   };
+
+  const items: Item[] = [
+    { name: 'Dashboard', path: '/dashboard', icon: Home, show: config.showDashboard, allow: ['admin', 'master'] },
+    { name: 'Estoque', path: '/estoque', icon: PackageOpen, show: config.showEstoque, allow: ['admin', 'master'] },
+    { name: 'Relatórios', path: '/relatorios', icon: FileText, show: config.showRelatorios, allow: ['admin', 'master'] },
+    { name: 'Clientes', path: '/clientes', icon: Users, show: config.showClientes, allow: ['funcionario', 'admin', 'master'] },
+    { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart, show: config.showPedidos, allow: ['funcionario', 'admin', 'master'] },
+    { name: 'Loja', path: '/comprar', icon: Store, show: config.showLoja, allow: ['funcionario', 'admin', 'master'] },
+  ];
+
+  const visible = items.filter((i) => i.show && (!role || i.allow.includes(role)));
 
   return (
     <div className="h-screen w-64 bg-confectionery-gray/50 border-r border-confectionery-pink/20 flex flex-col animate-fade-in">
@@ -47,7 +60,7 @@ const Sidebar = () => {
       </div>
       
       <nav className="flex-1 p-4 space-y-2">
-        {sidebarItems.map((item) => (
+        {visible.map((item) => (
           <Link
             key={item.path}
             to={item.path}
