@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Bell, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -10,8 +11,18 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
 
 const UserMenu = () => {
+  const { user, role, signOut, isBypass } = useAuth();
+  const navigate = useNavigate();
+  const email = (user as { email?: string } | null)?.email ?? 'Convidado';
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
     <div className="flex items-center gap-4">
       <button className="relative p-2 rounded-full hover:bg-confectionery-gray/50 animate-hover">
@@ -31,12 +42,18 @@ const UserMenu = () => {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end">
-          <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            <div className="text-xs font-normal text-muted-foreground truncate">{email}</div>
+            <div className="text-xs font-medium mt-1">
+              Role: <span className="uppercase">{role ?? '—'}</span>
+              {isBypass && <span className="ml-1 text-amber-600">(bypass)</span>}
+            </div>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Perfil</DropdownMenuItem>
           <DropdownMenuItem>Configurações</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive">Sair</DropdownMenuItem>
+          <DropdownMenuItem className="text-destructive" onClick={handleLogout}>Sair</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
