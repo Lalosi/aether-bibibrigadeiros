@@ -6,16 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import Logo from '@/components/Logo';
+import { useAuth } from '@/hooks/useAuth';
+import { config } from '@/lib/config';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast({
         title: 'Erro ao fazer login',
@@ -24,10 +27,19 @@ const Login = () => {
       });
       return;
     }
-
-    // Simular login
+    setSubmitting(true);
+    const { error } = await signIn(email, password);
+    setSubmitting(false);
+    if (error) {
+      toast({
+        title: 'Falha no login',
+        description: error,
+        variant: 'destructive',
+      });
+      return;
+    }
     toast({
-      title: 'Login realizado com sucesso',
+      title: 'Login realizado',
       description: 'Bem-vindo de volta!',
     });
     navigate('/dashboard');
@@ -85,9 +97,14 @@ const Login = () => {
               </Link>
             </div>
             
-            <Button type="submit" className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80">
-              Entrar
+            <Button type="submit" disabled={submitting} className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80">
+              {submitting ? 'Entrando…' : 'Entrar'}
             </Button>
+            {config.presentationMode && (
+              <p className="text-xs text-center text-muted-foreground">
+                Modo Apresentação ativo: qualquer email + senha <code className="font-mono">teste</code> entra como <strong>master</strong>.
+              </p>
+            )}
             
             <div className="relative mt-6">
               <div className="absolute inset-0 flex items-center">
