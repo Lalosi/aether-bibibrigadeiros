@@ -11,6 +11,7 @@ import {
   Store,
   Settings,
   LogOut,
+  type LucideIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,7 +21,7 @@ import type { AppRole } from '@/integrations/supabase/client';
 type Item = {
   name: string;
   path: string;
-  icon: React.ComponentType<{ size?: number }>;
+  icon: LucideIcon;
   show: boolean;
   allow: AppRole[];
 };
