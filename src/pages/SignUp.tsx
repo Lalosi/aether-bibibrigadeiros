@@ -5,15 +5,18 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Logo from '@/components/Logo';
+import { useAuth } from '@/hooks/useAuth';
 
 const SignUp = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name || !email || !password) {
@@ -25,21 +28,24 @@ const SignUp = () => {
       return;
     }
 
-    if (password.length < 8) {
+    if (password.length < 6) {
       toast({
         title: 'Senha muito curta',
-        description: 'Sua senha deve ter pelo menos 8 caracteres.',
+        description: 'Sua senha deve ter pelo menos 6 caracteres.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Simular cadastro
-    toast({
-      title: 'Conta criada com sucesso',
-      description: 'Bem-vindo ao Aether!',
-    });
-    navigate('/');
+    setSubmitting(true);
+    const { error } = await signUp(email, password, name);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: 'Erro ao cadastrar', description: error, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Conta criada', description: 'Bem-vindo ao Aether!' });
+    navigate('/dashboard');
   };
 
   return (
@@ -97,8 +103,8 @@ const SignUp = () => {
               <p className="text-xs text-gray-500">Deve ter pelo menos 8 caracteres.</p>
             </div>
             
-            <Button type="submit" className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80">
-              Começar
+            <Button type="submit" disabled={submitting} className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80">
+              {submitting ? 'Criando…' : 'Começar'}
             </Button>
             
             <div className="relative mt-6">
