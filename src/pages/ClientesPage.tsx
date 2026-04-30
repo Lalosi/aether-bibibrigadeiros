@@ -1,304 +1,201 @@
-
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NovoClienteDialog } from '@/components/dialogs/NovoClienteDialog';
+import { ClienteDialog, type ClienteRow } from '@/components/dialogs/ClienteDialog';
 import { SQLPopup } from '@/components/SQLPopup';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Mail, 
-  Phone,
-  MapPin,
-  User,
-  Edit,
-  Trash2
-} from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Dados de exemplo - movido para estado
-const clientesIniciais = [
-  {
-    id: 1,
-    nome: 'Maria Silva',
-    email: 'maria.silva@email.com',
-    telefone: '(11) 98765-4321',
-    endereco: 'Rua das Flores, 123',
-    ultimaCompra: '15/05/2023',
-    totalGasto: 'R$ 750,00',
-    status: 'Ativo',
-    tipo: 'Pessoa Física'
-  },
-  {
-    id: 2,
-    nome: 'Festas & Eventos Ltda',
-    email: 'contato@festaseventos.com',
-    telefone: '(11) 3456-7890',
-    endereco: 'Av. Central, 456',
-    ultimaCompra: '10/05/2023',
-    totalGasto: 'R$ 2.450,00',
-    status: 'Ativo',
-    tipo: 'Pessoa Jurídica'
-  },
-  {
-    id: 3,
-    nome: 'João Santos',
-    email: 'joao.santos@email.com',
-    telefone: '(11) 98765-1234',
-    endereco: 'Rua dos Pinheiros, 789',
-    ultimaCompra: '05/05/2023',
-    totalGasto: 'R$ 320,00',
-    status: 'Ativo',
-    tipo: 'Pessoa Física'
-  },
-  {
-    id: 4,
-    nome: 'Ana Oliveira',
-    email: 'ana.oliveira@email.com',
-    telefone: '(11) 97654-3210',
-    endereco: 'Alameda Santos, 567',
-    ultimaCompra: '02/05/2023',
-    totalGasto: 'R$ 480,00',
-    status: 'Inativo',
-    tipo: 'Pessoa Física'
-  },
-  {
-    id: 5,
-    nome: 'Doces & Celebrações',
-    email: 'contato@docesecelebracoes.com',
-    telefone: '(11) 3333-4444',
-    endereco: 'Rua Augusta, 1000',
-    ultimaCompra: '01/05/2023',
-    totalGasto: 'R$ 1.850,00',
-    status: 'Ativo',
-    tipo: 'Pessoa Jurídica'
-  }
-];
+type FiltroTipo = 'Todos' | 'Pessoa Física' | 'Pessoa Jurídica' | 'Ativos' | 'Inativos';
 
 const ClientesPage = () => {
+  const [clientes, setClientes] = useState<ClienteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<FiltroTipo>('Todos');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [clientes, setClientes] = useState(clientesIniciais);
+  const [editing, setEditing] = useState<ClienteRow | null>(null);
+  const [toDelete, setToDelete] = useState<ClienteRow | null>(null);
   const [sqlPopupOpen, setSqlPopupOpen] = useState(false);
   const [sqlPopupTitle, setSqlPopupTitle] = useState('');
   const [sqlPopupCommand, setSqlPopupCommand] = useState('');
-  const [busca, setBusca] = useState('');
-
-  const handleNovoCliente = (novoCliente: any) => {
-    setClientes([novoCliente, ...clientes]);
-  };
 
   const showSQLPopup = (title: string, command: string) => {
-    setSqlPopupTitle(title);
-    setSqlPopupCommand(command);
-    setSqlPopupOpen(true);
+    setSqlPopupTitle(title); setSqlPopupCommand(command); setSqlPopupOpen(true);
   };
 
-  const handleNovoClienteClick = () => {
-    setDialogOpen(true);
-  };
+  const fetchClientes = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('id, nome, cpf_cnpj, telefone, endereco, email, tipo, status')
+      .order('nome', { ascending: true });
+    if (error) toast.error('Erro ao carregar clientes', { description: error.message });
+    setClientes((data as ClienteRow[]) ?? []);
+    setLoading(false);
+  }, []);
 
-  const handleFiltrarClick = () => {
-    showSQLPopup(
-      'Comando: Filtrar Clientes',
-      `SELECT * FROM Clientes\nWHERE status = 'Ativo'\nORDER BY nome ASC;`
-    );
-  };
+  useEffect(() => { fetchClientes(); }, [fetchClientes]);
 
-  const handleBuscaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBusca(e.target.value);
-    if (e.target.value) {
-      showSQLPopup(
-        'Comando: Buscar Cliente por Nome',
-        `SELECT * FROM Clientes\nWHERE nome LIKE '%${e.target.value}%';`
-      );
+  const clientesFiltrados = clientes.filter(c => {
+    const buscaOK = !busca || c.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      (c.email ?? '').toLowerCase().includes(busca.toLowerCase());
+    let filtroOK = true;
+    if (filtro === 'Pessoa Física') filtroOK = c.tipo === 'Pessoa Física';
+    else if (filtro === 'Pessoa Jurídica') filtroOK = c.tipo === 'Pessoa Jurídica';
+    else if (filtro === 'Ativos') filtroOK = c.status === 'Ativo';
+    else if (filtro === 'Inativos') filtroOK = c.status === 'Inativo';
+    return buscaOK && filtroOK;
+  });
+
+  const handleNovo = () => { setEditing(null); setDialogOpen(true); };
+  const handleEditar = (c: ClienteRow) => { setEditing(c); setDialogOpen(true); };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    const { error } = await supabase.from('clientes').delete().eq('id', toDelete.id);
+    if (error) {
+      toast.error('Erro ao excluir', { description: error.message });
+    } else {
+      toast.success('Cliente excluído!');
+      showSQLPopup('Comando: Excluir Cliente', `DELETE FROM clientes WHERE id='${toDelete.id}';`);
+      fetchClientes();
     }
+    setToDelete(null);
   };
 
-  const handleEditarClick = (clienteId: number) => {
-    showSQLPopup(
-      'Comando: Editar Cliente',
-      `UPDATE Clientes\nSET telefone = '(11) 99999-8888'\nWHERE id_cliente = ${clienteId};`
-    );
-  };
-
-  const handleDeletarClick = (clienteId: number) => {
-    showSQLPopup(
-      'Comando: Deletar Cliente',
-      `DELETE FROM Clientes\nWHERE id_cliente = ${clienteId};`
-    );
-  };
+  const filtros: FiltroTipo[] = ['Todos', 'Pessoa Física', 'Pessoa Jurídica', 'Ativos', 'Inativos'];
 
   return (
     <MainLayout title="Gerenciamento de Clientes">
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-        <Button 
-          className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
-          onClick={handleNovoClienteClick}
-        >
+        <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground" onClick={handleNovo}>
           <Plus className="mr-2 h-4 w-4" /> Novo Cliente
         </Button>
-        
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-2"
-            onClick={handleFiltrarClick}
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filtrar</span>
-          </Button>
-          
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input 
-              placeholder="Buscar clientes..." 
-              className="pl-8" 
-              value={busca}
-              onChange={handleBuscaChange}
-            />
-          </div>
+        <div className="relative w-64">
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input placeholder="Buscar clientes..." className="pl-8" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
       </div>
-      
+
       <SimpleCard>
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="bg-confectionery-pink/10">Todos</Button>
-            <Button variant="outline" size="sm">Pessoa Física</Button>
-            <Button variant="outline" size="sm">Pessoa Jurídica</Button>
-            <Button variant="outline" size="sm">Ativos</Button>
-            <Button variant="outline" size="sm">Inativos</Button>
-          </div>
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {filtros.map(f => (
+            <Button
+              key={f} variant="outline" size="sm"
+              className={filtro === f ? 'bg-confectionery-pink/10' : ''}
+              onClick={() => setFiltro(f)}
+            >{f}</Button>
+          ))}
         </div>
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">ID</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Contato</TableHead>
-              <TableHead>Endereço</TableHead>
-              <TableHead>Última Compra</TableHead>
-              <TableHead>Total Gasto</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clientes.map((cliente) => (
-              <TableRow key={cliente.id} className="animate-fade-in">
-                <TableCell>{cliente.id}</TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src="" />
-                      <AvatarFallback className={cliente.tipo === 'Pessoa Jurídica' ? 'bg-confectionery-blue text-white' : 'bg-confectionery-pink'}>
-                        {cliente.nome.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      {cliente.nome}
-                      <div className="text-xs text-gray-500">{cliente.tipo}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1 text-sm">
-                      <Mail className="h-3 w-3" /> {cliente.email}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Phone className="h-3 w-3" /> {cliente.telefone}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-sm">
-                    <MapPin className="h-3 w-3" /> {cliente.endereco}
-                  </div>
-                </TableCell>
-                <TableCell>{cliente.ultimaCompra}</TableCell>
-                <TableCell>{cliente.totalGasto}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    cliente.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {cliente.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleEditarClick(cliente.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeletarClick(cliente.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando clientes...
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Endereço</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-500">
-            Mostrando 5 de 15 clientes
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              Anterior
-            </Button>
-            <Button variant="outline" size="sm" className="bg-confectionery-pink/10">
-              1
-            </Button>
-            <Button variant="outline" size="sm">
-              2
-            </Button>
-            <Button variant="outline" size="sm">
-              3
-            </Button>
-            <Button variant="outline" size="sm">
-              Próximo
-            </Button>
-          </div>
+            </TableHeader>
+            <TableBody>
+              {clientesFiltrados.map((c) => (
+                <TableRow key={c.id} className="animate-fade-in">
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src="" />
+                        <AvatarFallback className={c.tipo === 'Pessoa Jurídica' ? 'bg-confectionery-blue text-white' : 'bg-confectionery-pink'}>
+                          {c.nome.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        {c.nome}
+                        <div className="text-xs text-gray-500">{c.tipo ?? '—'}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1 text-sm"><Mail className="h-3 w-3" /> {c.email ?? '—'}</div>
+                      <div className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3" /> {c.telefone ?? '—'}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-sm"><MapPin className="h-3 w-3" /> {c.endereco ?? '—'}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      c.status === 'Ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>{c.status ?? '—'}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditar(c)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setToDelete(c)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {clientesFiltrados.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum cliente encontrado.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+
+        <div className="text-sm text-gray-500 mt-4">
+          Mostrando {clientesFiltrados.length} de {clientes.length} clientes
         </div>
       </SimpleCard>
 
-      <NovoClienteDialog 
+      <ClienteDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSuccess={handleNovoCliente}
+        onSaved={fetchClientes}
         onShowSQL={showSQLPopup}
+        cliente={editing}
       />
 
-      <SQLPopup
-        open={sqlPopupOpen}
-        onOpenChange={setSqlPopupOpen}
-        title={sqlPopupTitle}
-        sqlCommand={sqlPopupCommand}
-      />
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação executará <code>DELETE FROM clientes</code> e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <SQLPopup open={sqlPopupOpen} onOpenChange={setSqlPopupOpen} title={sqlPopupTitle} sqlCommand={sqlPopupCommand} />
     </MainLayout>
   );
 };

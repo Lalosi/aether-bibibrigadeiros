@@ -1,60 +1,38 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import MainLayout from '@/components/MainLayout';
 import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NovoProdutoDialog } from '@/components/dialogs/NovoProdutoDialog';
+import { ProdutoDialog, type ProdutoRow } from '@/components/dialogs/ProdutoDialog';
 import { SQLPopup } from '@/components/SQLPopup';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Search, Edit, Trash2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Dados de exemplo - movido para estado
-const produtosEstoqueInicial = [
-  { id: 1, nome: 'Bolo de Chocolate', categoria: 'Bolos', preco: 'R$ 40,00', estoque: 25, status: 'Disponível' },
-  { id: 2, nome: 'Brigadeiros (20un)', categoria: 'Doces', preco: 'R$ 25,00', estoque: 8, status: 'Baixo' },
-  { id: 3, nome: 'Torta de Morango', categoria: 'Tortas', preco: 'R$ 35,00', estoque: 12, status: 'Disponível' },
-  { id: 4, nome: 'Cupcake de Baunilha', categoria: 'Cupcakes', preco: 'R$ 8,00', estoque: 30, status: 'Disponível' },
-  { id: 5, nome: 'Trufas de Chocolate', categoria: 'Doces', preco: 'R$ 3,50', estoque: 5, status: 'Baixo' },
-  { id: 6, nome: 'Bolo de Cenoura', categoria: 'Bolos', preco: 'R$ 38,00', estoque: 18, status: 'Disponível' },
-  { id: 7, nome: 'Macarons (10un)', categoria: 'Doces', preco: 'R$ 30,00', estoque: 0, status: 'Indisponível' },
-];
+const formatBRL = (n: number | null | undefined) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(n ?? 0));
 
-const categorias = ['Todos', 'Bolos', 'Tortas', 'Doces', 'Cupcakes'];
+const statusFor = (qtd: number) =>
+  qtd > 10 ? 'Disponível' : qtd > 0 ? 'Baixo' : 'Indisponível';
 
 const EstoquePage = () => {
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
+  const [produtos, setProdutos] = useState<ProdutoRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [produtosEstoque, setProdutosEstoque] = useState(produtosEstoqueInicial);
+  const [editing, setEditing] = useState<ProdutoRow | null>(null);
+  const [toDelete, setToDelete] = useState<ProdutoRow | null>(null);
   const [sqlPopupOpen, setSqlPopupOpen] = useState(false);
   const [sqlPopupTitle, setSqlPopupTitle] = useState('');
   const [sqlPopupCommand, setSqlPopupCommand] = useState('');
-  
-  const produtosFiltrados = produtosEstoque.filter(produto => {
-    const matchesCategoria = categoriaSelecionada === 'Todos' || produto.categoria === categoriaSelecionada;
-    const matchesBusca = produto.nome.toLowerCase().includes(busca.toLowerCase());
-    return matchesCategoria && matchesBusca;
-  });
-
-  const handleNovoProduto = (novoProduto: any) => {
-    setProdutosEstoque([novoProduto, ...produtosEstoque]);
-  };
 
   const showSQLPopup = (title: string, command: string) => {
     setSqlPopupTitle(title);
@@ -62,144 +40,154 @@ const EstoquePage = () => {
     setSqlPopupOpen(true);
   };
 
-  const handleNovoProdutoClick = () => {
-    setDialogOpen(true);
-  };
+  const fetchProdutos = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('id, nome, categoria, preco_venda, preco_custo, qtd_estoque, fornecedor')
+      .order('nome', { ascending: true });
+    if (error) toast.error('Erro ao carregar produtos', { description: error.message });
+    setProdutos((data as ProdutoRow[]) ?? []);
+    setLoading(false);
+  }, []);
 
-  const handleBuscaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBusca(e.target.value);
-    if (e.target.value) {
-      showSQLPopup(
-        'Comando: Buscar Produto por Nome',
-        `SELECT * FROM Produtos\nWHERE nome LIKE '%${e.target.value}%';`
-      );
-    }
-  };
+  useEffect(() => { fetchProdutos(); }, [fetchProdutos]);
 
-  const handleCategoriaChange = (categoria: string) => {
-    setCategoriaSelecionada(categoria);
-    if (categoria !== 'Todos') {
-      showSQLPopup(
-        'Comando: Filtrar por Categoria',
-        `SELECT * FROM Produtos\nWHERE categoria_id = 1\nORDER BY nome ASC;`
-      );
+  const categorias = ['Todos', ...Array.from(new Set(produtos.map(p => p.categoria).filter(Boolean) as string[]))];
+
+  const produtosFiltrados = produtos.filter(p => {
+    const matchCat = categoriaSelecionada === 'Todos' || p.categoria === categoriaSelecionada;
+    const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase());
+    return matchCat && matchBusca;
+  });
+
+  const handleNovo = () => { setEditing(null); setDialogOpen(true); };
+  const handleEditar = (p: ProdutoRow) => { setEditing(p); setDialogOpen(true); };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    const { error } = await supabase.from('produtos').delete().eq('id', toDelete.id);
+    if (error) {
+      toast.error('Erro ao excluir', { description: error.message });
+    } else {
+      toast.success('Produto excluído!');
+      showSQLPopup('Comando: Excluir Produto', `DELETE FROM produtos WHERE id='${toDelete.id}';`);
+      fetchProdutos();
     }
+    setToDelete(null);
   };
 
   return (
     <MainLayout title="Gerenciamento de Estoque">
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button 
-            className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground"
-            onClick={handleNovoProdutoClick}
-          >
+          <Button className="bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground" onClick={handleNovo}>
             <Plus className="mr-2 h-4 w-4" /> Novo Produto
           </Button>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Categoria:</span>
             <select
               value={categoriaSelecionada}
-              onChange={(e) => handleCategoriaChange(e.target.value)}
+              onChange={(e) => setCategoriaSelecionada(e.target.value)}
               className="rounded-md border border-confectionery-pink/20 px-3 py-1"
             >
-              {categorias.map((categoria) => (
-                <option key={categoria} value={categoria}>{categoria}</option>
-              ))}
+              {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
-        
+
         <div className="relative w-64">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Buscar produtos..." 
-            className="pl-8" 
-            value={busca}
-            onChange={handleBuscaChange}
-          />
+          <Input placeholder="Buscar produtos..." className="pl-8" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
       </div>
-      
+
       <SimpleCard>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">ID</TableHead>
-              <TableHead>Nome do Produto</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Preço</TableHead>
-              <TableHead>Estoque</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {produtosFiltrados.map((produto) => (
-              <TableRow key={produto.id} className="animate-fade-in">
-                <TableCell>{produto.id}</TableCell>
-                <TableCell className="font-medium">{produto.nome}</TableCell>
-                <TableCell>{produto.categoria}</TableCell>
-                <TableCell>{produto.preco}</TableCell>
-                <TableCell>{produto.estoque}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    produto.status === 'Disponível' ? 'bg-green-100 text-green-800' : 
-                    produto.status === 'Baixo' ? 'bg-yellow-100 text-yellow-800' : 
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {produto.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando produtos...
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Preço Venda</TableHead>
+                <TableHead>Preço Custo</TableHead>
+                <TableHead>Estoque</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-500">
-            Mostrando {produtosFiltrados.length} de {produtosEstoque.length} produtos
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" className="bg-confectionery-pink/10">
-              1
-            </Button>
-            <Button variant="outline" size="sm">
-              2
-            </Button>
-            <Button variant="outline" size="sm">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+            </TableHeader>
+            <TableBody>
+              {produtosFiltrados.map((p) => {
+                const status = statusFor(p.qtd_estoque);
+                return (
+                  <TableRow key={p.id} className="animate-fade-in">
+                    <TableCell className="font-medium">{p.nome}</TableCell>
+                    <TableCell>{p.categoria ?? '—'}</TableCell>
+                    <TableCell>{formatBRL(p.preco_venda)}</TableCell>
+                    <TableCell>{formatBRL(p.preco_custo)}</TableCell>
+                    <TableCell>{p.qtd_estoque}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        status === 'Disponível' ? 'bg-green-100 text-green-800' :
+                        status === 'Baixo' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>{status}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditar(p)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setToDelete(p)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {produtosFiltrados.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+
+        <div className="text-sm text-gray-500 mt-4">
+          Mostrando {produtosFiltrados.length} de {produtos.length} produtos
         </div>
       </SimpleCard>
 
-      <NovoProdutoDialog 
+      <ProdutoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSuccess={handleNovoProduto}
+        onSaved={fetchProdutos}
         onShowSQL={showSQLPopup}
+        produto={editing}
       />
 
-      <SQLPopup
-        open={sqlPopupOpen}
-        onOpenChange={setSqlPopupOpen}
-        title={sqlPopupTitle}
-        sqlCommand={sqlPopupCommand}
-      />
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação executará <code>DELETE FROM produtos</code> e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <SQLPopup open={sqlPopupOpen} onOpenChange={setSqlPopupOpen} title={sqlPopupTitle} sqlCommand={sqlPopupCommand} />
     </MainLayout>
   );
 };
