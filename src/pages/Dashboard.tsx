@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import StatCard from '@/components/StatCard';
 import SimpleCard from '@/components/SimpleCard';
@@ -129,7 +130,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SimpleCard title="Pedidos Recentes" actions={<button className="text-sm text-primary-foreground hover:underline">Ver Todos</button>}>
+        <SimpleCard title="Pedidos Recentes" actions={<Link to="/pedidos" className="text-sm text-primary-foreground hover:underline">Ver Todos</Link>}>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -164,7 +165,7 @@ const Dashboard = () => {
           </div>
         </SimpleCard>
 
-        <SimpleCard title="Itens com Estoque Baixo" actions={<button className="text-sm text-primary-foreground hover:underline">Ver Todos</button>}>
+        <SimpleCard title="Itens com Estoque Baixo" actions={<Link to="/estoque" className="text-sm text-primary-foreground hover:underline">Ver Todos</Link>}>
           <div className="space-y-4">
             {produtosBaixoEstoque.map((produto, index) => (
               <div key={index} className="flex items-center gap-4 p-3 rounded-lg border border-confectionery-pink/20 hover:border-confectionery-pink animate-hover">

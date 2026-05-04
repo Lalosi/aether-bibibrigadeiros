@@ -5,6 +5,7 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NovoPedidoDialog } from '@/components/dialogs/NovoPedidoDialog';
+import { ObjectPopup } from '@/components/ObjectPopup';
 import { 
   Table, 
   TableBody, 
@@ -91,6 +92,7 @@ const statusColorMap = {
 const PedidosPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pedidos, setPedidos] = useState(pedidosIniciais);
+  const [detalhe, setDetalhe] = useState<any | null>(null);
 
   const handleNovoPedido = (novoPedido: any) => {
     setPedidos([novoPedido, ...pedidos]);
@@ -175,7 +177,7 @@ const PedidosPage = () => {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setDetalhe(pedido)}>
                     Detalhes
                   </Button>
                 </TableCell>
@@ -212,6 +214,15 @@ const PedidosPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleNovoPedido}
+      />
+
+      <ObjectPopup
+        open={!!detalhe}
+        onOpenChange={(o) => !o && setDetalhe(null)}
+        title={`Pedido ${detalhe?.id ?? ''}`}
+        className="Pedido"
+        data={detalhe}
+        description="Representação do objeto Pedido instanciado na aplicação."
       />
     </MainLayout>
   );
