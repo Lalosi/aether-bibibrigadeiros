@@ -1,96 +1,81 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Database, Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const pedidoSchema = z.object({
-  cliente: z.string().min(1, 'Cliente é obrigatório'),
-  itens: z.string().min(1, 'Quantidade de itens é obrigatória'),
-  total: z.string().min(1, 'Valor total é obrigatório'),
-  pagamento: z.string().min(1, 'Forma de pagamento é obrigatória'),
-  status: z.string().min(1, 'Status é obrigatório'),
+  cliente_id: z.string().min(1, 'Cliente é obrigatório'),
+  valor_total: z.coerce.number().min(0.01, 'Valor inválido'),
+  metodo_pagamento: z.string().min(1),
+  status: z.string().min(1),
+  observacoes: z.string().optional(),
 });
 
 type PedidoFormData = z.infer<typeof pedidoSchema>;
 
-interface NovoPedidoDialogProps {
+interface ClienteOption { id: number | string; nome: string; }
+
+interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (pedido: any) => void;
+  onSaved: () => void;
+  onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
 }
 
-export const NovoPedidoDialog = ({ open, onOpenChange, onSuccess }: NovoPedidoDialogProps) => {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: Props) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clientes, setClientes] = useState<ClienteOption[]>([]);
 
   const form = useForm<PedidoFormData>({
     resolver: zodResolver(pedidoSchema),
     defaultValues: {
-      cliente: '',
-      itens: '',
-      total: '',
-      pagamento: 'Cartão',
+      cliente_id: '',
+      valor_total: 0,
+      metodo_pagamento: 'Cartão',
       status: 'Aguardando Pagamento',
+      observacoes: '',
     },
   });
 
+  useEffect(() => {
+    if (!open) return;
+    form.reset();
+    supabase.from('clientes').select('id, nome').order('nome').then(({ data }) => {
+      setClientes((data as ClienteOption[]) ?? []);
+    });
+  }, [open]);
+
   const onSubmit = async (data: PedidoFormData) => {
     setIsSubmitting(true);
-
-    // Simular delay de inserção no banco
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const novoPedido = {
-      id: `#PED${String(Date.now()).slice(-3)}`,
-      cliente: data.cliente,
-      data: new Date().toLocaleDateString('pt-BR'),
-      itens: parseInt(data.itens),
-      total: data.total,
-      pagamento: data.pagamento,
+    const payload = {
+      cliente_id: Number(data.cliente_id),
+      valor_total: data.valor_total,
+      metodo_pagamento: data.metodo_pagamento,
       status: data.status,
+      observacoes: data.observacoes || null,
+      data_pedido: new Date().toISOString(),
     };
-
-    // SQL simulado
-    const sqlCommand = `INSERT INTO Pedido (cod_pedido, cliente, data, itens, valor_total, pagamento, status) 
-VALUES ('${novoPedido.id}', '${data.cliente}', '${novoPedido.data}', ${data.itens}, '${data.total}', '${data.pagamento}', '${data.status}')`;
-
-    toast({
-      title: "✅ Pedido criado com sucesso!",
-      description: (
-        <div className="mt-2 space-y-2">
-          <p className="text-sm">O registro foi inserido no banco de dados.</p>
-          <div className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
-            {sqlCommand}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            🖋️ Novo registro inserido na tabela Pedido às {new Date().toLocaleTimeString('pt-BR')}
-          </p>
-        </div>
-      ),
-      duration: 5000,
-    });
-
-    onSuccess(novoPedido);
-    form.reset();
+    const { data: inserted, error } = await supabase
+      .from('pedidos').insert(payload).select().single();
     setIsSubmitting(false);
+    if (error) {
+      toast.error('Erro ao criar pedido', { description: error.message });
+      return;
+    }
+    toast.success('Pedido criado!');
+    onShowObject?.('Pedido Cadastrado', 'Pedido', inserted as any);
+    onSaved();
     onOpenChange(false);
   };
 
@@ -99,121 +84,58 @@ VALUES ('${novoPedido.id}', '${data.cliente}', '${novoPedido.data}', ${data.iten
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-confectionery-pink" />
-            Novo Pedido
+            <Database className="h-5 w-5 text-confectionery-pink" /> Novo Pedido
           </DialogTitle>
           <DialogDescription>
-            🧩 Ao clicar em Salvar, o sistema executará uma operação de INSERT no banco de dados, 
-            adicionando este registro à tabela <code className="bg-muted px-1 rounded">Pedido</code>.
+            🧩 Instancia um novo objeto <code className="bg-muted px-1 rounded">Pedido</code> e o persiste no banco.
           </DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="cliente"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Maria Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            <FormField control={form.control} name="cliente_id" render={({ field }) => (
+              <FormItem><FormLabel>Cliente</FormLabel>
+                <FormControl>
+                  <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
+                    <option value="">Selecione...</option>
+                    {clientes.map(c => <option key={c.id} value={String(c.id)}>{c.nome}</option>)}
+                  </select>
+                </FormControl><FormMessage /></FormItem>
+            )} />
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="itens"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade de Itens</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="5" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="total"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor Total</FormLabel>
-                    <FormControl>
-                      <Input placeholder="R$ 180,00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="valor_total" render={({ field }) => (
+                <FormItem><FormLabel>Valor Total (R$)</FormLabel>
+                  <FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="metodo_pagamento" render={({ field }) => (
+                <FormItem><FormLabel>Pagamento</FormLabel>
+                  <FormControl>
+                    <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
+                      <option>Cartão</option><option>Pix</option><option>Dinheiro</option>
+                    </select>
+                  </FormControl><FormMessage /></FormItem>
+              )} />
             </div>
-
-            <FormField
-              control={form.control}
-              name="pagamento"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Forma de Pagamento</FormLabel>
-                  <FormControl>
-                    <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
-                      <option value="Cartão">Cartão</option>
-                      <option value="Pix">Pix</option>
-                      <option value="Dinheiro">Dinheiro</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <FormControl>
-                    <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
-                      <option value="Aguardando Pagamento">Aguardando Pagamento</option>
-                      <option value="Confirmado">Confirmado</option>
-                      <option value="Em Preparo">Em Preparo</option>
-                      <option value="Em Entrega">Em Entrega</option>
-                      <option value="Entregue">Entregue</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            <FormField control={form.control} name="status" render={({ field }) => (
+              <FormItem><FormLabel>Status</FormLabel>
+                <FormControl>
+                  <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
+                    <option>Aguardando Pagamento</option>
+                    <option>Confirmado</option>
+                    <option>Em Preparo</option>
+                    <option>Em Entrega</option>
+                    <option>Entregue</option>
+                    <option>Cancelado</option>
+                  </select>
+                </FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="observacoes" render={({ field }) => (
+              <FormItem><FormLabel>Observações</FormLabel>
+                <FormControl><Input placeholder="Opcional" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
             <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="bg-confectionery-pink hover:bg-confectionery-pink/80"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar'
-                )}
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancelar</Button>
+              <Button type="submit" className="bg-confectionery-pink hover:bg-confectionery-pink/80" disabled={isSubmitting}>
+                {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando...</>) : 'Salvar'}
               </Button>
             </div>
           </form>
