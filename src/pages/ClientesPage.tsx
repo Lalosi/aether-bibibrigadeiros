@@ -4,7 +4,7 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClienteDialog, type ClienteRow } from '@/components/dialogs/ClienteDialog';
-import { SQLPopup } from '@/components/SQLPopup';
+import { ObjectPopup } from '@/components/ObjectPopup';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -27,12 +27,16 @@ const ClientesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClienteRow | null>(null);
   const [toDelete, setToDelete] = useState<ClienteRow | null>(null);
-  const [sqlPopupOpen, setSqlPopupOpen] = useState(false);
-  const [sqlPopupTitle, setSqlPopupTitle] = useState('');
-  const [sqlPopupCommand, setSqlPopupCommand] = useState('');
+  const [objPopupOpen, setObjPopupOpen] = useState(false);
+  const [objPopupTitle, setObjPopupTitle] = useState('');
+  const [objPopupClass, setObjPopupClass] = useState('');
+  const [objPopupData, setObjPopupData] = useState<Record<string, any> | null>(null);
 
-  const showSQLPopup = (title: string, command: string) => {
-    setSqlPopupTitle(title); setSqlPopupCommand(command); setSqlPopupOpen(true);
+  const showObject = (title: string, className: string, data: Record<string, any>) => {
+    setObjPopupTitle(title);
+    setObjPopupClass(className);
+    setObjPopupData(data);
+    setObjPopupOpen(true);
   };
 
   const fetchClientes = useCallback(async () => {
@@ -69,7 +73,7 @@ const ClientesPage = () => {
       toast.error('Erro ao excluir', { description: error.message });
     } else {
       toast.success('Cliente excluído!');
-      showSQLPopup('Comando: Excluir Cliente', `DELETE FROM clientes WHERE id='${toDelete.id}';`);
+      showObject('Cliente Excluído', 'Cliente', { id: toDelete.id, nome: toDelete.nome });
       fetchClientes();
     }
     setToDelete(null);
@@ -174,7 +178,7 @@ const ClientesPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSaved={fetchClientes}
-        onShowSQL={showSQLPopup}
+        onShowObject={showObject}
         cliente={editing}
       />
 
@@ -195,7 +199,13 @@ const ClientesPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <SQLPopup open={sqlPopupOpen} onOpenChange={setSqlPopupOpen} title={sqlPopupTitle} sqlCommand={sqlPopupCommand} />
+      <ObjectPopup
+        open={objPopupOpen}
+        onOpenChange={setObjPopupOpen}
+        title={objPopupTitle}
+        className={objPopupClass}
+        data={objPopupData}
+      />
     </MainLayout>
   );
 };
