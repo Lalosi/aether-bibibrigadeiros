@@ -39,11 +39,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  onShowSQL?: (title: string, command: string) => void;
+  onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
   produto?: ProdutoRow | null;
 }
 
-export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowSQL, produto }: Props) => {
+export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produto }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isEdit = !!produto;
 
@@ -81,16 +81,10 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowSQL, produto 
     let error;
     if (isEdit && produto) {
       ({ error } = await supabase.from('produtos').update(payload).eq('id', produto.id));
-      onShowSQL?.(
-        'Comando: Atualizar Produto',
-        `UPDATE produtos\nSET nome='${data.nome}', categoria='${data.categoria}',\n    preco_venda=${data.preco_venda}, preco_custo=${data.preco_custo},\n    qtd_estoque=${data.qtd_estoque}, fornecedor='${data.fornecedor || ''}'\nWHERE id='${produto.id}';`,
-      );
+      onShowObject?.('Produto Atualizado', 'Produto', { id: produto.id, ...payload });
     } else {
       ({ error } = await supabase.from('produtos').insert(payload));
-      onShowSQL?.(
-        'Comando: Inserir Novo Produto',
-        `INSERT INTO produtos (nome, categoria, preco_venda, preco_custo, qtd_estoque, fornecedor)\nVALUES ('${data.nome}', '${data.categoria}', ${data.preco_venda}, ${data.preco_custo}, ${data.qtd_estoque}, '${data.fornecedor || ''}');`,
-      );
+      onShowObject?.('Produto Cadastrado', 'Produto', payload);
     }
 
     setIsSubmitting(false);
@@ -112,8 +106,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowSQL, produto 
             {isEdit ? 'Editar Produto' : 'Novo Produto'}
           </DialogTitle>
           <DialogDescription>
-            🧩 {isEdit ? 'Será executado UPDATE' : 'Será executado INSERT'} na tabela{' '}
-            <code className="bg-muted px-1 rounded">produtos</code>.
+            🧩 {isEdit ? 'Atualize os dados do produto.' : 'Cadastre um novo produto no catálogo.'}
           </DialogDescription>
         </DialogHeader>
 
