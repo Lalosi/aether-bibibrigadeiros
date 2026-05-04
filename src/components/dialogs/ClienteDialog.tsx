@@ -41,11 +41,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  onShowSQL?: (title: string, command: string) => void;
+  onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
   cliente?: ClienteRow | null;
 }
 
-export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowSQL, cliente }: Props) => {
+export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isEdit = !!cliente;
 
@@ -78,16 +78,10 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowSQL, cliente 
     let error;
     if (isEdit && cliente) {
       ({ error } = await supabase.from('clientes').update(payload).eq('id', cliente.id));
-      onShowSQL?.(
-        'Comando: Atualizar Cliente',
-        `UPDATE clientes\nSET nome='${data.nome}', telefone='${data.telefone}', email='${data.email}',\n    endereco='${data.endereco}', tipo='${data.tipo}', status='${data.status}'\nWHERE id='${cliente.id}';`,
-      );
+      onShowObject?.('Cliente Atualizado', 'Cliente', { id: cliente.id, ...payload });
     } else {
       ({ error } = await supabase.from('clientes').insert(payload));
-      onShowSQL?.(
-        'Comando: Inserir Novo Cliente',
-        `INSERT INTO clientes (nome, cpf_cnpj, telefone, endereco, email, tipo, status)\nVALUES ('${data.nome}', '${data.cpf_cnpj}', '${data.telefone}', '${data.endereco}', '${data.email}', '${data.tipo}', '${data.status}');`,
-      );
+      onShowObject?.('Cliente Cadastrado', 'Cliente', payload);
     }
 
     setIsSubmitting(false);
@@ -109,8 +103,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowSQL, cliente 
             {isEdit ? 'Editar Cliente' : 'Novo Cliente'}
           </DialogTitle>
           <DialogDescription>
-            🧩 {isEdit ? 'Será executado UPDATE' : 'Será executado INSERT'} na tabela{' '}
-            <code className="bg-muted px-1 rounded">clientes</code>.
+            🧩 {isEdit ? 'Atualize os dados do cliente.' : 'Cadastre um novo cliente.'}
           </DialogDescription>
         </DialogHeader>
 
