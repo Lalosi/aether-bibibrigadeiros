@@ -12,9 +12,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Package, CreditCard, Truck, Check, XCircle, Loader2, Ban } from 'lucide-react';
+import { Search, Package, CreditCard, Truck, Check, XCircle, Loader2, Ban, Eye, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface PedidoRow {
   id: number;
@@ -52,6 +56,8 @@ const statusColorMap: Record<string, string> = {
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const PedidosPage = () => {
+  const { role } = useAuth();
+  const canEdit = role === 'admin' || role === 'master';
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pedidos, setPedidos] = useState<PedidoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,18 +174,43 @@ const PedidosPage = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setDetalhe(p)}>
-                        Detalhes
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" title="Detalhes" onClick={() => setDetalhe(p)}>
+                        <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="text-destructive hover:text-destructive"
-                        disabled={p.status === 'Cancelado' || p.status === 'Entregue'}
-                        onClick={() => setToCancel(p)}
-                      >
-                        <Ban className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" title="Editar pedido">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-2" align="end">
+                            <div className="text-xs font-medium px-2 py-1 text-muted-foreground">Alterar status</div>
+                            <div className="grid gap-1">
+                              {STATUS_OPTIONS.map(s => (
+                                <Button
+                                  key={s} variant="ghost" size="sm"
+                                  className="justify-start h-8"
+                                  disabled={s === p.status}
+                                  onClick={() => handleStatusChange(p, s)}
+                                >
+                                  {statusIconMap[s]} <span className="ml-2">{s}</span>
+                                </Button>
+                              ))}
+                              <div className="my-1 h-px bg-border" />
+                              <Button
+                                variant="ghost" size="sm"
+                                className="justify-start h-8 text-destructive hover:text-destructive"
+                                disabled={p.status === 'Cancelado'}
+                                onClick={() => setToCancel(p)}
+                              >
+                                <Ban className="h-4 w-4 mr-2" /> Cancelar pedido
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
