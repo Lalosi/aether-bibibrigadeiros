@@ -40,12 +40,13 @@ export interface ClienteRow {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
+  onSaved: (saved?: ClienteRow) => void;
   onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
   cliente?: ClienteRow | null;
+  defaultNome?: string;
 }
 
-export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente }: Props) => {
+export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente, defaultNome }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isEdit = !!cliente;
 
@@ -60,7 +61,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
   useEffect(() => {
     if (open) {
       form.reset({
-        nome: cliente?.nome ?? '',
+        nome: cliente?.nome ?? defaultNome ?? '',
         cpf_cnpj: cliente?.cpf_cnpj ?? '',
         telefone: cliente?.telefone ?? '',
         endereco: cliente?.endereco ?? '',
@@ -69,19 +70,25 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
         status: (cliente?.status as any) ?? 'Ativo',
       });
     }
-  }, [open, cliente, form]);
+  }, [open, cliente, defaultNome, form]);
 
   const onSubmit = async (data: ClienteFormData) => {
     setIsSubmitting(true);
-    const payload = { ...data };
+    const payload = { ...data, tipo_pessoa: data.tipo };
 
     let error;
+    let createdRow: ClienteRow | null = null;
     if (isEdit && cliente) {
-      ({ error } = await supabase.from('clientes').update(payload).eq('id', cliente.id));
+      const { error: e } = await supabase.from('clientes').update(payload).eq('id', cliente.id);
+      error = e;
       onShowObject?.('Cliente Atualizado', 'Cliente', { id: cliente.id, ...payload });
     } else {
-      ({ error } = await supabase.from('clientes').insert(payload));
-      onShowObject?.('Cliente Cadastrado', 'Cliente', payload);
+      const { data: inserted, error: e } = await supabase.from('clientes').insert(payload).select().single();
+      error = e;
+      if (!e && inserted) {
+        createdRow = inserted as any;
+        onShowObject?.('Cliente Cadastrado', 'Cliente', inserted as any);
+      }
     }
 
     setIsSubmitting(false);
@@ -90,8 +97,8 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
       return;
     }
     toast.success(isEdit ? 'Cliente atualizado!' : 'Cliente cadastrado!');
-    onSaved();
     onOpenChange(false);
+    onSaved(createdRow ?? undefined);
   };
 
   return (

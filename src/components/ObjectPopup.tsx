@@ -50,10 +50,10 @@ export const ObjectPopup = ({
             <span className="font-bold">{className}</span>
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-confectionery-pink/15 text-confectionery-pink font-medium">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-900 text-slate-50 font-semibold tracking-wide">
               Instância
             </span>
-            <span className="font-mono text-sm truncate">{instanceName}</span>
+            <span className="font-mono text-sm truncate text-slate-800">{instanceName}</span>
           </DialogDescription>
         </DialogHeader>
 

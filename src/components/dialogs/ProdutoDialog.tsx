@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório').max(100),
-  categoria: z.string().min(1, 'Categoria é obrigatória'),
+  categoria_id: z.string().min(1, 'Categoria é obrigatória'),
   preco_venda: z.coerce.number().positive('Preço de venda inválido'),
   preco_custo: z.coerce.number().nonnegative('Preço de custo inválido'),
   qtd_estoque: z.coerce.number().int().nonnegative('Quantidade inválida'),
@@ -29,6 +29,7 @@ export interface ProdutoRow {
   id: string;
   nome: string;
   categoria: string | null;
+  categoria_id?: number | string | null;
   preco_venda: number;
   preco_custo: number | null;
   qtd_estoque: number;
@@ -45,20 +46,24 @@ interface Props {
 
 export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produto }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [categorias, setCategorias] = useState<{ id: number; nome: string }[]>([]);
   const isEdit = !!produto;
 
   const form = useForm<ProdutoFormData>({
     resolver: zodResolver(produtoSchema),
     defaultValues: {
-      nome: '', categoria: '', preco_venda: 0, preco_custo: 0, qtd_estoque: 0, fornecedor: '',
+      nome: '', categoria_id: '', preco_venda: 0, preco_custo: 0, qtd_estoque: 0, fornecedor: '',
     },
   });
 
   useEffect(() => {
     if (open) {
+      supabase.from('categorias').select('id, nome').order('nome').then(({ data }) => {
+        setCategorias((data as any) ?? []);
+      });
       form.reset({
         nome: produto?.nome ?? '',
-        categoria: produto?.categoria ?? '',
+        categoria_id: produto?.categoria_id != null ? String(produto.categoria_id) : '',
         preco_venda: Number(produto?.preco_venda ?? 0),
         preco_custo: Number(produto?.preco_custo ?? 0),
         qtd_estoque: produto?.qtd_estoque ?? 0,
@@ -69,9 +74,12 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
 
   const onSubmit = async (data: ProdutoFormData) => {
     setIsSubmitting(true);
+    const catId = data.categoria_id ? Number(data.categoria_id) : null;
+    const catNome = categorias.find(c => c.id === catId)?.nome ?? null;
     const payload = {
       nome: data.nome,
-      categoria: data.categoria,
+      categoria: catNome,
+      categoria_id: catId,
       preco_venda: data.preco_venda,
       preco_custo: data.preco_custo,
       qtd_estoque: data.qtd_estoque,
@@ -120,10 +128,17 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
               </FormItem>
             )} />
 
-            <FormField control={form.control} name="categoria" render={({ field }) => (
+            <FormField control={form.control} name="categoria_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
-                <FormControl><Input placeholder="Ex: Bolos" {...field} /></FormControl>
+                <FormControl>
+                  <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
+                    <option value="">Selecione uma categoria...</option>
+                    {categorias.map(c => (
+                      <option key={c.id} value={String(c.id)}>{c.nome}</option>
+                    ))}
+                  </select>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
