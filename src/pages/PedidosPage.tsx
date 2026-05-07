@@ -157,21 +157,10 @@ const PedidosPage = () => {
                   <TableCell>{fmtBRL(Number(p.valor_total))}</TableCell>
                   <TableCell>{p.metodo_pagamento ?? '—'}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit ${statusColorMap[p.status] ?? 'bg-gray-100 text-gray-800'}`}>
-                        {statusIconMap[p.status]}
-                        {p.status}
-                      </span>
-                      <select
-                        value={p.status}
-                        onChange={(e) => handleStatusChange(p, e.target.value)}
-                        disabled={p.status === 'Cancelado'}
-                        className="text-xs rounded border border-input bg-background px-1 py-0.5"
-                        title="Alterar status"
-                      >
-                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs inline-flex items-center gap-1 w-fit ${statusColorMap[p.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                      {statusIconMap[p.status]}
+                      {p.status}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
