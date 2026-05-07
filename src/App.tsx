@@ -13,6 +13,7 @@ import EstoquePage from "./pages/EstoquePage";
 import PedidosPage from "./pages/PedidosPage";
 import ClientesPage from "./pages/ClientesPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
+import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import { AuthProvider, ProtectedRoute } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/pedidos" element={<ProtectedRoute><PedidosPage /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><ClientesPage /></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute allow={["admin","master"]}><RelatoriosPage /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute allow={["master","admin"]}><ConfiguracoesPage /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

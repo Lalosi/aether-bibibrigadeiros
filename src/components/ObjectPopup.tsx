@@ -74,7 +74,7 @@ export const ObjectPopup = ({
                 <span className="h-2 w-2 rounded-full bg-green-500/70" />
               </div>
             </div>
-            <pre className="px-4 py-3 overflow-x-auto leading-relaxed">
+            <pre className="px-4 py-3 overflow-x-auto leading-relaxed text-[1.05rem]">
               <span className="text-slate-500">{`{`}</span>
               {entries.length === 0 && (
                 <div className="pl-4 text-slate-500">// sem dados</div>
