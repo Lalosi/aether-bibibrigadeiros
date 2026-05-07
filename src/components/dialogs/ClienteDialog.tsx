@@ -73,15 +73,19 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
 
   const onSubmit = async (data: ClienteFormData) => {
     setIsSubmitting(true);
-    const payload = { ...data };
+    const payload = { ...data, tipo_pessoa: data.tipo };
 
     let error;
     if (isEdit && cliente) {
-      ({ error } = await supabase.from('clientes').update(payload).eq('id', cliente.id));
+      const { error: e } = await supabase.from('clientes').update(payload).eq('id', cliente.id);
+      error = e;
       onShowObject?.('Cliente Atualizado', 'Cliente', { id: cliente.id, ...payload });
     } else {
-      ({ error } = await supabase.from('clientes').insert(payload));
-      onShowObject?.('Cliente Cadastrado', 'Cliente', payload);
+      const { data: inserted, error: e } = await supabase.from('clientes').insert(payload).select().single();
+      error = e;
+      if (!e && inserted) {
+        onShowObject?.('Cliente Cadastrado', 'Cliente', inserted as any);
+      }
     }
 
     setIsSubmitting(false);
@@ -90,8 +94,8 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
       return;
     }
     toast.success(isEdit ? 'Cliente atualizado!' : 'Cliente cadastrado!');
-    onSaved();
     onOpenChange(false);
+    onSaved();
   };
 
   return (
