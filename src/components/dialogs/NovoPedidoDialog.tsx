@@ -10,9 +10,15 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Database, Loader2 } from 'lucide-react';
+import { Database, Loader2, Check, ChevronsUpDown, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ClienteDialog, type ClienteRow } from './ClienteDialog';
+import { cn } from '@/lib/utils';
 
 const pedidoSchema = z.object({
   cliente_id: z.string().min(1, 'Cliente é obrigatório'),
@@ -36,6 +42,9 @@ interface Props {
 export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientes, setClientes] = useState<ClienteOption[]>([]);
+  const [comboOpen, setComboOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
 
   const form = useForm<PedidoFormData>({
     resolver: zodResolver(pedidoSchema),
@@ -51,10 +60,21 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
   useEffect(() => {
     if (!open) return;
     form.reset();
-    supabase.from('clientes').select('id, nome').order('nome').then(({ data }) => {
-      setClientes((data as ClienteOption[]) ?? []);
-    });
+    setSearch('');
+    loadClientes();
   }, [open]);
+
+  const loadClientes = async () => {
+    const { data } = await supabase.from('clientes').select('id, nome').order('nome');
+    setClientes((data as ClienteOption[]) ?? []);
+  };
+
+  const handleClienteCreated = async (created?: ClienteRow) => {
+    await loadClientes();
+    if (created) {
+      form.setValue('cliente_id', String(created.id), { shouldValidate: true });
+    }
+  };
 
   const onSubmit = async (data: PedidoFormData) => {
     setIsSubmitting(true);
@@ -80,6 +100,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -92,15 +113,76 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="cliente_id" render={({ field }) => (
-              <FormItem><FormLabel>Cliente</FormLabel>
-                <FormControl>
-                  <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
-                    <option value="">Selecione...</option>
-                    {clientes.map(c => <option key={c.id} value={String(c.id)}>{c.nome}</option>)}
-                  </select>
-                </FormControl><FormMessage /></FormItem>
-            )} />
+            <FormField control={form.control} name="cliente_id" render={({ field }) => {
+              const selected = clientes.find(c => String(c.id) === field.value);
+              const filtered = clientes.filter(c =>
+                c.nome.toLowerCase().includes(search.toLowerCase()),
+              );
+              return (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Cliente</FormLabel>
+                  <Popover open={comboOpen} onOpenChange={setComboOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          className={cn('w-full justify-between font-normal', !field.value && 'text-muted-foreground')}
+                        >
+                          {selected ? selected.nome : 'Buscar cliente...'}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput placeholder="Digite o nome..." value={search} onValueChange={setSearch} />
+                        <CommandList>
+                          {filtered.length === 0 && (
+                            <CommandEmpty className="py-6 text-center text-sm">
+                              <p className="mb-2 text-muted-foreground">Nenhum cliente encontrado.</p>
+                              <Button
+                                type="button" size="sm"
+                                className="bg-confectionery-pink hover:bg-confectionery-pink/80"
+                                onClick={() => { setComboOpen(false); setClienteDialogOpen(true); }}
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" /> Adicionar Novo Cliente
+                              </Button>
+                            </CommandEmpty>
+                          )}
+                          {filtered.length > 0 && (
+                            <CommandGroup>
+                              {filtered.map(c => (
+                                <CommandItem
+                                  key={c.id}
+                                  value={String(c.id)}
+                                  onSelect={() => {
+                                    form.setValue('cliente_id', String(c.id), { shouldValidate: true });
+                                    setComboOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn('mr-2 h-4 w-4', String(c.id) === field.value ? 'opacity-100' : 'opacity-0')} />
+                                  {c.nome}
+                                </CommandItem>
+                              ))}
+                              <CommandItem
+                                value="__new__"
+                                onSelect={() => { setComboOpen(false); setClienteDialogOpen(true); }}
+                                className="text-confectionery-pink"
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" /> Adicionar novo cliente
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              );
+            }} />
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="valor_total" render={({ field }) => (
                 <FormItem><FormLabel>Valor Total (R$)</FormLabel>
@@ -142,5 +224,12 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
         </Form>
       </DialogContent>
     </Dialog>
+    <ClienteDialog
+      open={clienteDialogOpen}
+      onOpenChange={setClienteDialogOpen}
+      onSaved={handleClienteCreated}
+      defaultNome={search}
+    />
+    </>
   );
 };
