@@ -77,6 +77,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
     const payload = { ...data, tipo_pessoa: data.tipo };
 
     let error;
+    let createdRow: ClienteRow | null = null;
     if (isEdit && cliente) {
       const { error: e } = await supabase.from('clientes').update(payload).eq('id', cliente.id);
       error = e;
@@ -85,6 +86,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
       const { data: inserted, error: e } = await supabase.from('clientes').insert(payload).select().single();
       error = e;
       if (!e && inserted) {
+        createdRow = inserted as any;
         onShowObject?.('Cliente Cadastrado', 'Cliente', inserted as any);
       }
     }
@@ -96,10 +98,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
     }
     toast.success(isEdit ? 'Cliente atualizado!' : 'Cliente cadastrado!');
     onOpenChange(false);
-    // Forward inserted row to parent (when available) for auto-select use cases
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const created = (typeof inserted !== 'undefined' ? (inserted as any) : null) as ClienteRow | null;
-    onSaved(created ?? undefined);
+    onSaved(createdRow ?? undefined);
   };
 
   return (
