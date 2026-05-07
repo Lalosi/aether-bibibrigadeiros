@@ -40,12 +40,13 @@ export interface ClienteRow {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
+  onSaved: (saved?: ClienteRow) => void;
   onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
   cliente?: ClienteRow | null;
+  defaultNome?: string;
 }
 
-export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente }: Props) => {
+export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente, defaultNome }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isEdit = !!cliente;
 
@@ -60,7 +61,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
   useEffect(() => {
     if (open) {
       form.reset({
-        nome: cliente?.nome ?? '',
+        nome: cliente?.nome ?? defaultNome ?? '',
         cpf_cnpj: cliente?.cpf_cnpj ?? '',
         telefone: cliente?.telefone ?? '',
         endereco: cliente?.endereco ?? '',
@@ -69,7 +70,7 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
         status: (cliente?.status as any) ?? 'Ativo',
       });
     }
-  }, [open, cliente, form]);
+  }, [open, cliente, defaultNome, form]);
 
   const onSubmit = async (data: ClienteFormData) => {
     setIsSubmitting(true);
@@ -95,7 +96,10 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
     }
     toast.success(isEdit ? 'Cliente atualizado!' : 'Cliente cadastrado!');
     onOpenChange(false);
-    onSaved();
+    // Forward inserted row to parent (when available) for auto-select use cases
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const created = (typeof inserted !== 'undefined' ? (inserted as any) : null) as ClienteRow | null;
+    onSaved(created ?? undefined);
   };
 
   return (
