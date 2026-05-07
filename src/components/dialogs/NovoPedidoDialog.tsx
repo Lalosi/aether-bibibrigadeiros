@@ -145,7 +145,11 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                               <Button
                                 type="button" size="sm"
                                 className="bg-confectionery-pink hover:bg-confectionery-pink/80"
-                                onClick={() => { setComboOpen(false); setClienteDialogOpen(true); }}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setComboOpen(false);
+                                  setTimeout(() => setClienteDialogOpen(true), 50);
+                                }}
                               >
                                 <UserPlus className="mr-2 h-4 w-4" /> Adicionar Novo Cliente
                               </Button>
@@ -168,7 +172,10 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                               ))}
                               <CommandItem
                                 value="__new__"
-                                onSelect={() => { setComboOpen(false); setClienteDialogOpen(true); }}
+                                onSelect={() => {
+                                  setComboOpen(false);
+                                  setTimeout(() => setClienteDialogOpen(true), 50);
+                                }}
                                 className="text-confectionery-pink"
                               >
                                 <UserPlus className="mr-2 h-4 w-4" /> Adicionar novo cliente
