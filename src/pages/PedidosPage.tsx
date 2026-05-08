@@ -28,6 +28,7 @@ interface PedidoRow {
   metodo_pagamento: string | null;
   status: string;
   observacoes: string | null;
+  estoque_baixado?: boolean | null;
   cliente?: { nome: string } | null;
 }
 
@@ -73,7 +74,7 @@ const PedidosPage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('pedidos')
-      .select('id, cliente_id, data_pedido, valor_total, metodo_pagamento, status, observacoes, cliente:clientes(nome)')
+      .select('id, cliente_id, data_pedido, valor_total, metodo_pagamento, status, observacoes, estoque_baixado, cliente:clientes(nome)')
       .order('data_pedido', { ascending: false });
     if (error) toast.error('Erro ao carregar pedidos', { description: error.message });
     setPedidos((data as any) ?? []);
@@ -82,10 +83,55 @@ const PedidosPage = () => {
 
   useEffect(() => { fetchPedidos(); }, [fetchPedidos]);
 
+  // Decrement product stock for each item of a pedido
+  const baixarEstoque = async (pedidoId: number): Promise<{ ok: boolean; msg?: string }> => {
+    const { data: itens, error } = await supabase
+      .from('pedidos_itens').select('produto_id, quantidade').eq('pedido_id', pedidoId);
+    if (error) return { ok: false, msg: error.message };
+    if (!itens || itens.length === 0) return { ok: true };
+    // Validate stock
+    for (const it of itens as any[]) {
+      const { data: p } = await supabase.from('produtos').select('id, nome, qtd_estoque').eq('id', it.produto_id).maybeSingle();
+      if (!p) continue;
+      if (Number((p as any).qtd_estoque) < Number(it.quantidade)) {
+        return { ok: false, msg: `Estoque insuficiente de ${(p as any).nome}` };
+      }
+    }
+    // Decrement
+    for (const it of itens as any[]) {
+      const { data: p } = await supabase.from('produtos').select('qtd_estoque').eq('id', it.produto_id).maybeSingle();
+      const novo = Number((p as any)?.qtd_estoque ?? 0) - Number(it.quantidade);
+      await supabase.from('produtos').update({ qtd_estoque: novo }).eq('id', it.produto_id);
+    }
+    return { ok: true };
+  };
+
+  const estornarEstoque = async (pedidoId: number) => {
+    const { data: itens } = await supabase
+      .from('pedidos_itens').select('produto_id, quantidade').eq('pedido_id', pedidoId);
+    for (const it of (itens as any[]) ?? []) {
+      const { data: p } = await supabase.from('produtos').select('qtd_estoque').eq('id', it.produto_id).maybeSingle();
+      const novo = Number((p as any)?.qtd_estoque ?? 0) + Number(it.quantidade);
+      await supabase.from('produtos').update({ qtd_estoque: novo }).eq('id', it.produto_id);
+    }
+  };
+
   const handleStatusChange = async (pedido: PedidoRow, novo: string) => {
     if (novo === pedido.status) return;
+    const updates: any = { status: novo };
+    // Going to Entregue → baixa estoque (only once)
+    if (novo === 'Entregue' && !pedido.estoque_baixado) {
+      const res = await baixarEstoque(pedido.id);
+      if (!res.ok) { toast.error('Não foi possível finalizar', { description: res.msg }); return; }
+      updates.estoque_baixado = true;
+    }
+    // Going to Cancelado after baixa → estorna
+    if (novo === 'Cancelado' && pedido.estoque_baixado) {
+      await estornarEstoque(pedido.id);
+      updates.estoque_baixado = false;
+    }
     const { data, error } = await supabase
-      .from('pedidos').update({ status: novo }).eq('id', pedido.id).select().single();
+      .from('pedidos').update(updates).eq('id', pedido.id).select().single();
     if (error) {
       toast.error('Erro ao atualizar status', { description: error.message });
       return;
@@ -97,8 +143,13 @@ const PedidosPage = () => {
 
   const confirmCancel = async () => {
     if (!toCancel) return;
+    const updates: any = { status: 'Cancelado' };
+    if (toCancel.estoque_baixado) {
+      await estornarEstoque(toCancel.id);
+      updates.estoque_baixado = false;
+    }
     const { data, error } = await supabase
-      .from('pedidos').update({ status: 'Cancelado' }).eq('id', toCancel.id).select().single();
+      .from('pedidos').update(updates).eq('id', toCancel.id).select().single();
     if (error) {
       toast.error('Erro ao cancelar', { description: error.message });
     } else {
