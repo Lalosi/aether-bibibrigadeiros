@@ -151,7 +151,7 @@ const ConfiguracoesPage = () => {
                           {row.profile.nome ?? row.profile.full_name ?? '—'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {row.profile.email ?? '—'}
+                          {row.profile.email ?? <span className="text-xs font-mono">{row.profile.id}</span>}
                         </TableCell>
                         <TableCell>
                           <Badge className={`${roleBadge(row.role)} text-white capitalize`}>
