@@ -47,8 +47,12 @@ const ConfiguracoesPage = () => {
       return;
     }
     const priority: AppRole[] = ['master', 'admin', 'funcionario'];
-    const merged: Row[] = (profiles ?? []).map((p: any) => {
-      const userRoles = (roles ?? []).filter((r: any) => r.user_id === p.id);
+    const profileList: any[] = profiles ?? [];
+    const roleList: any[] = roles ?? [];
+
+    // Start from profiles
+    const merged: Row[] = profileList.map((p: any) => {
+      const userRoles = roleList.filter((r: any) => r.user_id === p.id);
       const top = priority.find((pr) => userRoles.some((ur: any) => ur.role === pr));
       const matched = userRoles.find((ur: any) => ur.role === top);
       return {
@@ -57,6 +61,20 @@ const ConfiguracoesPage = () => {
         roleId: matched?.id ?? null,
       };
     });
+
+    // Fallback: include users present in user_roles but missing from profiles
+    const knownIds = new Set(merged.map((m) => m.profile.id));
+    for (const ur of roleList) {
+      if (knownIds.has(ur.user_id)) continue;
+      const userRoles = roleList.filter((r: any) => r.user_id === ur.user_id);
+      const top = priority.find((pr) => userRoles.some((u: any) => u.role === pr));
+      merged.push({
+        profile: { id: ur.user_id, nome: null, email: null },
+        role: (top ?? 'funcionario') as AppRole,
+        roleId: ur.id ?? null,
+      });
+      knownIds.add(ur.user_id);
+    }
     setRows(merged);
     setLoading(false);
   };
@@ -133,7 +151,7 @@ const ConfiguracoesPage = () => {
                           {row.profile.nome ?? row.profile.full_name ?? '—'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {row.profile.email ?? '—'}
+                          {row.profile.email ?? <span className="text-xs font-mono">{row.profile.id}</span>}
                         </TableCell>
                         <TableCell>
                           <Badge className={`${roleBadge(row.role)} text-white capitalize`}>

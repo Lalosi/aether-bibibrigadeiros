@@ -121,6 +121,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
               return (
                 <FormItem className="flex flex-col">
                   <FormLabel>Cliente</FormLabel>
+                  <div className="flex gap-2">
                   <Popover open={comboOpen} onOpenChange={setComboOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -128,7 +129,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                           type="button"
                           variant="outline"
                           role="combobox"
-                          className={cn('w-full justify-between font-normal', !field.value && 'text-muted-foreground')}
+                          className={cn('flex-1 justify-between font-normal', !field.value && 'text-muted-foreground')}
                         >
                           {selected ? selected.nome : 'Buscar cliente...'}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -142,17 +143,9 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                           {filtered.length === 0 && (
                             <CommandEmpty className="py-6 text-center text-sm">
                               <p className="mb-2 text-muted-foreground">Nenhum cliente encontrado.</p>
-                              <Button
-                                type="button" size="sm"
-                                className="bg-confectionery-pink hover:bg-confectionery-pink/80"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
-                                  setComboOpen(false);
-                                  setTimeout(() => setClienteDialogOpen(true), 50);
-                                }}
-                              >
-                                <UserPlus className="mr-2 h-4 w-4" /> Adicionar Novo Cliente
-                              </Button>
+                              <p className="text-xs text-muted-foreground">
+                                Use o botão <strong>Novo</strong> ao lado para cadastrar.
+                              </p>
                             </CommandEmpty>
                           )}
                           {filtered.length > 0 && (
@@ -170,22 +163,24 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                                   {c.nome}
                                 </CommandItem>
                               ))}
-                              <CommandItem
-                                value="__new__"
-                                onSelect={() => {
-                                  setComboOpen(false);
-                                  setTimeout(() => setClienteDialogOpen(true), 50);
-                                }}
-                                className="text-confectionery-pink"
-                              >
-                                <UserPlus className="mr-2 h-4 w-4" /> Adicionar novo cliente
-                              </CommandItem>
                             </CommandGroup>
                           )}
                         </CommandList>
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      setComboOpen(false);
+                      setClienteDialogOpen(true);
+                    }}
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" /> Novo
+                  </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               );
