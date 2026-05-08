@@ -50,8 +50,8 @@ const UserMenu = () => {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Perfil</DropdownMenuItem>
-          <DropdownMenuItem>Configurações</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/perfil')}>Perfil</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/configuracoes')}>Configurações</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="text-destructive" onClick={handleLogout}>Sair</DropdownMenuItem>
         </DropdownMenuContent>
