@@ -11,6 +11,7 @@ import {
   Store,
   Settings,
   LogOut,
+  Wheat,
   type LucideIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +47,7 @@ const Sidebar = () => {
   const items: Item[] = [
     { name: 'Dashboard', path: '/dashboard', icon: Home, show: config.showDashboard, allow: ['admin', 'master'] },
     { name: 'Estoque', path: '/estoque', icon: PackageOpen, show: config.showEstoque, allow: ['admin', 'master'] },
+    { name: 'Matérias-Primas', path: '/materias-primas', icon: Wheat, show: config.showMateriasPrimas, allow: ['admin', 'master'] },
     { name: 'Relatórios', path: '/relatorios', icon: FileText, show: config.showRelatorios, allow: ['admin', 'master'] },
     { name: 'Clientes', path: '/clientes', icon: Users, show: config.showClientes, allow: ['funcionario', 'admin', 'master'] },
     { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart, show: config.showPedidos, allow: ['funcionario', 'admin', 'master'] },

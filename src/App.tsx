@@ -10,6 +10,7 @@ import SignUp from "./pages/SignUp";
 import OrderPage from "./pages/OrderPage";
 import NotFound from "./pages/NotFound";
 import EstoquePage from "./pages/EstoquePage";
+import MateriasPrimasPage from "./pages/MateriasPrimasPage";
 import PedidosPage from "./pages/PedidosPage";
 import ClientesPage from "./pages/ClientesPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute allow={["admin","master"]}><Dashboard /></ProtectedRoute>} />
             <Route path="/comprar" element={<ProtectedRoute><OrderPage /></ProtectedRoute>} />
             <Route path="/estoque" element={<ProtectedRoute allow={["admin","master"]}><EstoquePage /></ProtectedRoute>} />
+            <Route path="/materias-primas" element={<ProtectedRoute allow={["admin","master"]}><MateriasPrimasPage /></ProtectedRoute>} />
             <Route path="/pedidos" element={<ProtectedRoute><PedidosPage /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><ClientesPage /></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute allow={["admin","master"]}><RelatoriosPage /></ProtectedRoute>} />

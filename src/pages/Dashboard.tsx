@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import StatCard from '@/components/StatCard';
 import SimpleCard from '@/components/SimpleCard';
 import ChartCard from '@/components/ChartCard';
-import { Package, ArrowUpRight, ShoppingCart, Users, CreditCard } from 'lucide-react';
+import { Package, ArrowUpRight, ShoppingCart, Users, CreditCard, Wheat } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   LineChart, 
   Line, 
@@ -39,12 +40,6 @@ const vendasSemanais = [
   { name: 'Sáb', vendas: 30000, compras: 18000 },
 ];
 
-const produtosBaixoEstoque = [
-  { nome: 'Trufas', quantidadeRestante: 10, total: 100 },
-  { nome: 'Brigadeiros', quantidadeRestante: 15, total: 120 },
-  { nome: 'Bolos', quantidadeRestante: 5, total: 50 },
-];
-
 const pedidosRecentes = [
   { id: 1, cliente: 'Maria Silva', produto: 'Bolo de Chocolate', valor: 'R$89,90', status: 'Entregue' },
   { id: 2, cliente: 'João Santos', produto: 'Torta de Morango', valor: 'R$75,50', status: 'Em Preparo' },
@@ -52,6 +47,20 @@ const pedidosRecentes = [
 ];
 
 const Dashboard = () => {
+  const [finais, setFinais] = useState<{ id: string; nome: string; qtd_estoque: number }[]>([]);
+  const [insumos, setInsumos] = useState<{ id: string; nome: string; estoque_atual: number; unidade: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: p }, { data: m }] = await Promise.all([
+        supabase.from('produtos').select('id, nome, qtd_estoque').order('qtd_estoque', { ascending: true }).limit(5),
+        supabase.from('materias_primas').select('id, nome, estoque_atual, unidade').order('estoque_atual', { ascending: true }).limit(5),
+      ]);
+      setFinais((p as any) ?? []);
+      setInsumos((m as any) ?? []);
+    })();
+  }, []);
+
   return (
     <MainLayout title="Dashboard">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -165,24 +174,49 @@ const Dashboard = () => {
           </div>
         </SimpleCard>
 
-        <SimpleCard title="Itens com Estoque Baixo" actions={<Link to="/estoque" className="text-sm text-primary-foreground hover:underline">Ver Todos</Link>}>
-          <div className="space-y-4">
-            {produtosBaixoEstoque.map((produto, index) => (
-              <div key={index} className="flex items-center gap-4 p-3 rounded-lg border border-confectionery-pink/20 hover:border-confectionery-pink animate-hover">
-                <div className="w-12 h-12 rounded-lg bg-confectionery-pink flex items-center justify-center">
-                  <ShoppingCart size={20} className="text-primary-foreground" />
+        <div className="space-y-6">
+          <SimpleCard
+            title="Produtos Finais (prontos para venda)"
+            actions={<Link to="/estoque" className="text-sm text-primary-foreground hover:underline">Ver estoque</Link>}
+          >
+            <div className="space-y-3">
+              {finais.length === 0 && <p className="text-sm text-muted-foreground">Sem dados.</p>}
+              {finais.map((p) => (
+                <div key={p.id} className="flex items-center gap-4 p-3 rounded-lg border border-confectionery-pink/20 hover:border-confectionery-pink animate-hover">
+                  <div className="w-10 h-10 rounded-lg bg-confectionery-pink flex items-center justify-center">
+                    <ShoppingCart size={18} className="text-primary-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{p.nome}</h3>
+                    <p className="text-xs text-gray-500">Estoque: {p.qtd_estoque} un</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${p.qtd_estoque > 10 ? 'bg-green-100 text-green-800' : p.qtd_estoque > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                    {p.qtd_estoque > 10 ? 'Disponível' : p.qtd_estoque > 0 ? 'Baixo' : 'Indisponível'}
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-medium">{produto.nome}</h3>
-                  <p className="text-sm text-gray-500">Quantidade Restante: {produto.quantidadeRestante}</p>
+              ))}
+            </div>
+          </SimpleCard>
+          <SimpleCard
+            title="Matérias-Primas (insumos)"
+            actions={<Link to="/materias-primas" className="text-sm text-primary-foreground hover:underline">Ver insumos</Link>}
+          >
+            <div className="space-y-3">
+              {insumos.length === 0 && <p className="text-sm text-muted-foreground">Sem insumos cadastrados.</p>}
+              {insumos.map((m) => (
+                <div key={m.id} className="flex items-center gap-4 p-3 rounded-lg border border-confectionery-pink/20 hover:border-confectionery-pink animate-hover">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                    <Wheat size={18} className="text-amber-700" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{m.nome}</h3>
+                    <p className="text-xs text-gray-500">Estoque: {Number(m.estoque_atual).toFixed(2)} {m.unidade}</p>
+                  </div>
                 </div>
-                <button className="px-3 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                  Baixo
-                </button>
-              </div>
-            ))}
-          </div>
-        </SimpleCard>
+              ))}
+            </div>
+          </SimpleCard>
+        </div>
       </div>
     </MainLayout>
   );

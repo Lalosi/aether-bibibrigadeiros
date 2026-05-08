@@ -46,7 +46,7 @@ const EstoquePage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('produtos')
-      .select('id, nome, categoria, preco_venda, preco_custo, qtd_estoque, fornecedor')
+      .select('id, nome, categoria, categoria_id, preco_venda, preco_custo, qtd_estoque, fornecedor, tempo_producao_min, margem_desejada_pct, custo_fixo_pct')
       .order('nome', { ascending: true });
     if (error) toast.error('Erro ao carregar produtos', { description: error.message });
     setProdutos((data as ProdutoRow[]) ?? []);

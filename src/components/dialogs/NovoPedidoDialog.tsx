@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Database, Loader2, Check, ChevronsUpDown, UserPlus } from 'lucide-react';
+import { Database, Loader2, Check, ChevronsUpDown, UserPlus, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -22,7 +22,6 @@ import { cn } from '@/lib/utils';
 
 const pedidoSchema = z.object({
   cliente_id: z.string().min(1, 'Cliente é obrigatório'),
-  valor_total: z.coerce.number().min(0.01, 'Valor inválido'),
   metodo_pagamento: z.string().min(1),
   status: z.string().min(1),
   observacoes: z.string().optional(),
@@ -31,6 +30,8 @@ const pedidoSchema = z.object({
 type PedidoFormData = z.infer<typeof pedidoSchema>;
 
 interface ClienteOption { id: number | string; nome: string; }
+interface ProdutoOption { id: string; nome: string; preco_venda: number; qtd_estoque: number; }
+interface ItemPedido { produto_id: string; quantidade: number; preco_unitario: number; }
 
 interface Props {
   open: boolean;
@@ -42,6 +43,8 @@ interface Props {
 export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientes, setClientes] = useState<ClienteOption[]>([]);
+  const [produtos, setProdutos] = useState<ProdutoOption[]>([]);
+  const [itens, setItens] = useState<ItemPedido[]>([]);
   const [comboOpen, setComboOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [clienteDialogOpen, setClienteDialogOpen] = useState(false);
@@ -50,7 +53,6 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     resolver: zodResolver(pedidoSchema),
     defaultValues: {
       cliente_id: '',
-      valor_total: 0,
       metodo_pagamento: 'Cartão',
       status: 'Aguardando Pagamento',
       observacoes: '',
@@ -61,12 +63,35 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     if (!open) return;
     form.reset();
     setSearch('');
+    setItens([]);
     loadClientes();
+    loadProdutos();
   }, [open]);
 
   const loadClientes = async () => {
     const { data } = await supabase.from('clientes').select('id, nome').order('nome');
     setClientes((data as ClienteOption[]) ?? []);
+  };
+
+  const loadProdutos = async () => {
+    const { data } = await supabase.from('produtos').select('id, nome, preco_venda, qtd_estoque').order('nome');
+    setProdutos((data as ProdutoOption[]) ?? []);
+  };
+
+  const totalCalc = itens.reduce((acc, it) => acc + it.preco_unitario * it.quantidade, 0);
+
+  const addItem = () => setItens((it) => [...it, { produto_id: '', quantidade: 1, preco_unitario: 0 }]);
+  const removeItem = (i: number) => setItens((it) => it.filter((_, idx) => idx !== i));
+  const updateItem = (i: number, patch: Partial<ItemPedido>) => {
+    setItens((it) => it.map((x, idx) => {
+      if (idx !== i) return x;
+      const merged = { ...x, ...patch };
+      if (patch.produto_id) {
+        const p = produtos.find((pr) => pr.id === patch.produto_id);
+        if (p) merged.preco_unitario = Number(p.preco_venda);
+      }
+      return merged;
+    }));
   };
 
   const handleClienteCreated = async (created?: ClienteRow) => {
@@ -77,10 +102,18 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
   };
 
   const onSubmit = async (data: PedidoFormData) => {
+    if (itens.length === 0) {
+      toast.error('Adicione pelo menos um item ao pedido.');
+      return;
+    }
+    if (itens.some((it) => !it.produto_id || it.quantidade <= 0)) {
+      toast.error('Existem itens incompletos no pedido.');
+      return;
+    }
     setIsSubmitting(true);
     const payload = {
       cliente_id: Number(data.cliente_id),
-      valor_total: data.valor_total,
+      valor_total: Number(totalCalc.toFixed(2)),
       metodo_pagamento: data.metodo_pagamento,
       status: data.status,
       observacoes: data.observacoes || null,
@@ -88,13 +121,26 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     };
     const { data: inserted, error } = await supabase
       .from('pedidos').insert(payload).select().single();
-    setIsSubmitting(false);
     if (error) {
+      setIsSubmitting(false);
       toast.error('Erro ao criar pedido', { description: error.message });
       return;
     }
+    // persist items
+    const pedidoId = (inserted as any).id;
+    const itemsPayload = itens.map((it) => ({
+      pedido_id: pedidoId,
+      produto_id: it.produto_id,
+      quantidade: it.quantidade,
+      preco_unitario: it.preco_unitario,
+    }));
+    const { error: itErr } = await supabase.from('pedidos_itens').insert(itemsPayload);
+    setIsSubmitting(false);
+    if (itErr) {
+      toast.error('Pedido criado, mas itens falharam', { description: itErr.message });
+    }
     toast.success('Pedido criado!');
-    onShowObject?.('Pedido Cadastrado', 'Pedido', inserted as any);
+    onShowObject?.('Pedido Cadastrado', 'Pedido', { ...(inserted as any), itens: itemsPayload });
     onSaved();
     onOpenChange(false);
   };
@@ -186,10 +232,6 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
               );
             }} />
             <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="valor_total" render={({ field }) => (
-                <FormItem><FormLabel>Valor Total (R$)</FormLabel>
-                  <FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
               <FormField control={form.control} name="metodo_pagamento" render={({ field }) => (
                 <FormItem><FormLabel>Pagamento</FormLabel>
                   <FormControl>
@@ -198,20 +240,63 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                     </select>
                   </FormControl><FormMessage /></FormItem>
               )} />
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem><FormLabel>Status</FormLabel>
+                  <FormControl>
+                    <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
+                      <option>Aguardando Pagamento</option>
+                      <option>Confirmado</option>
+                      <option>Em Preparo</option>
+                      <option>Em Entrega</option>
+                      <option>Entregue</option>
+                      <option>Cancelado</option>
+                    </select>
+                  </FormControl><FormMessage /></FormItem>
+              )} />
             </div>
-            <FormField control={form.control} name="status" render={({ field }) => (
-              <FormItem><FormLabel>Status</FormLabel>
-                <FormControl>
-                  <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
-                    <option>Aguardando Pagamento</option>
-                    <option>Confirmado</option>
-                    <option>Em Preparo</option>
-                    <option>Em Entrega</option>
-                    <option>Entregue</option>
-                    <option>Cancelado</option>
-                  </select>
-                </FormControl><FormMessage /></FormItem>
-            )} />
+
+            {/* Itens do pedido */}
+            <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <FormLabel className="m-0">Itens do Pedido</FormLabel>
+                <Button type="button" size="sm" variant="outline" onClick={addItem}>
+                  <Plus className="h-4 w-4 mr-1" /> Item
+                </Button>
+              </div>
+              {itens.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum item adicionado.</p>}
+              {itens.map((it, idx) => {
+                const subtotal = it.preco_unitario * it.quantidade;
+                return (
+                  <div key={idx} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <select value={it.produto_id}
+                        onChange={(e) => updateItem(idx, { produto_id: e.target.value })}
+                        className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm">
+                        <option value="">Produto...</option>
+                        {produtos.map((p) => (
+                          <option key={p.id} value={p.id}>{p.nome} (estoque: {p.qtd_estoque})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-20">
+                      <Input type="number" min={1} value={it.quantidade}
+                        onChange={(e) => updateItem(idx, { quantidade: Number(e.target.value) })} />
+                    </div>
+                    <div className="w-24 text-sm font-mono text-right">
+                      {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive"
+                      onClick={() => removeItem(idx)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+              <div className="flex justify-end pt-2 border-t font-semibold">
+                Total: {totalCalc.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+            </div>
+
             <FormField control={form.control} name="observacoes" render={({ field }) => (
               <FormItem><FormLabel>Observações</FormLabel>
                 <FormControl><Input placeholder="Opcional" {...field} /></FormControl><FormMessage /></FormItem>
