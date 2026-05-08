@@ -3,6 +3,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase, type AppRole } from '@/integrations/supabase/client';
 import { config } from '@/lib/config';
 
+const MASTER_UUID = '6d75b8d7-8737-4b67-ab21-b166399c0fcc';
+
 interface BypassUser {
   id: string;
   email: string;
@@ -32,6 +34,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchRole = useCallback(async (userId: string) => {
+    // Hard fallback: known master UUID is always treated as 'master'
+    if (userId === MASTER_UUID) {
+      setRole('master');
+      return;
+    }
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')

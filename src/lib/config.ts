@@ -20,6 +20,7 @@ export const config = {
   showClientes: bool(import.meta.env.VITE_SHOW_CLIENTES, true),
   showPedidos: bool(import.meta.env.VITE_SHOW_PEDIDOS, true),
   showDashboard: bool(import.meta.env.VITE_SHOW_DASHBOARD, true),
+  showMateriasPrimas: bool(import.meta.env.VITE_SHOW_MATERIAS_PRIMAS, true),
 
   // Bypass credentials used only when presentationMode is true.
   bypassEmail: 'teste@teste.com',
