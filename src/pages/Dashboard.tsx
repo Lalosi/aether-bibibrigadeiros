@@ -48,13 +48,13 @@ const pedidosRecentes = [
 
 const Dashboard = () => {
   const [finais, setFinais] = useState<{ id: string; nome: string; qtd_estoque: number }[]>([]);
-  const [insumos, setInsumos] = useState<{ id: string; nome: string; estoque_atual: number; unidade: string }[]>([]);
+  const [insumos, setInsumos] = useState<{ id: string; nome: string; estoque_atual: number; unidade_medida: string }[]>([]);
 
   useEffect(() => {
     (async () => {
       const [{ data: p }, { data: m }] = await Promise.all([
         supabase.from('produtos').select('id, nome, qtd_estoque').order('qtd_estoque', { ascending: true }).limit(5),
-        supabase.from('materias_primas').select('id, nome, estoque_atual, unidade').order('estoque_atual', { ascending: true }).limit(5),
+        supabase.from('materias_primas').select('id, nome, estoque_atual, unidade_medida').order('estoque_atual', { ascending: true }).limit(5),
       ]);
       setFinais((p as any) ?? []);
       setInsumos((m as any) ?? []);
@@ -210,7 +210,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium">{m.nome}</h3>
-                    <p className="text-xs text-gray-500">Estoque: {Number(m.estoque_atual).toFixed(2)} {m.unidade}</p>
+                    <p className="text-xs text-gray-500">Estoque: {Number(m.estoque_atual).toFixed(2)} {m.unidade_medida}</p>
                   </div>
                 </div>
               ))}

@@ -47,7 +47,7 @@ export interface ProdutoRow {
 interface MateriaPrima {
   id: string;
   nome: string;
-  unidade: string;
+  unidade_medida: string;
   preco_compra: number;
   quantidade_embalagem: number;
   estoque_atual: number;
@@ -223,7 +223,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       const needed = Number(it.quantidade_usada) * produzirQty;
       if (Number(mp.estoque_atual) < needed) {
         toast.error(`Estoque insuficiente de ${mp.nome}`, {
-          description: `Necessário: ${needed} ${mp.unidade} | Disponível: ${mp.estoque_atual} ${mp.unidade}`,
+          description: `Necessário: ${needed} ${mp.unidade_medida} | Disponível: ${mp.estoque_atual} ${mp.unidade_medida}`,
         });
         return;
       }
@@ -343,12 +343,12 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
                           >
                             <option value="">Selecionar...</option>
                             {materias.map((m) => (
-                              <option key={m.id} value={m.id}>{m.nome} ({m.unidade})</option>
+                              <option key={m.id} value={m.id}>{m.nome} ({m.unidade_medida})</option>
                             ))}
                           </select>
                         </div>
                         <div className="w-32">
-                          <FormLabel className="text-xs">Qtd usada {mp ? `(${mp.unidade})` : ''}</FormLabel>
+                          <FormLabel className="text-xs">Qtd usada {mp ? `(${mp.unidade_medida})` : ''}</FormLabel>
                           <Input type="number" step="0.01" value={it.quantidade_usada}
                             onChange={(e) => updateInsumo(idx, { quantidade_usada: Number(e.target.value) })} />
                         </div>
