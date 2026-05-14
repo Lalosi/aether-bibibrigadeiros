@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const schema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
-  unidade: z.enum(['g', 'kg', 'ml', 'L', 'un']),
+  unidade_medida: z.enum(['g', 'kg', 'ml', 'L', 'un']),
   preco_compra: z.coerce.number().nonnegative(),
   quantidade_embalagem: z.coerce.number().positive(),
   estoque_atual: z.coerce.number().nonnegative().default(0),
@@ -24,7 +24,7 @@ export type MateriaPrimaForm = z.infer<typeof schema>;
 export interface MateriaPrimaRow {
   id: string;
   nome: string;
-  unidade: string;
+  unidade_medida: string;
   preco_compra: number;
   quantidade_embalagem: number;
   estoque_atual: number;
@@ -43,14 +43,14 @@ export const MateriaPrimaDialog = ({ open, onOpenChange, onSaved, materia }: Pro
   const isEdit = !!materia;
   const form = useForm<MateriaPrimaForm>({
     resolver: zodResolver(schema),
-    defaultValues: { nome: '', unidade: 'g', preco_compra: 0, quantidade_embalagem: 1, estoque_atual: 0, fornecedor: '' },
+    defaultValues: { nome: '', unidade_medida: 'g', preco_compra: 0, quantidade_embalagem: 1, estoque_atual: 0, fornecedor: '' },
   });
 
   useEffect(() => {
     if (open) {
       form.reset({
         nome: materia?.nome ?? '',
-        unidade: (materia?.unidade as any) ?? 'g',
+        unidade_medida: (materia?.unidade_medida as any) ?? 'g',
         preco_compra: Number(materia?.preco_compra ?? 0),
         quantidade_embalagem: Number(materia?.quantidade_embalagem ?? 1),
         estoque_atual: Number(materia?.estoque_atual ?? 0),
@@ -91,7 +91,7 @@ export const MateriaPrimaDialog = ({ open, onOpenChange, onSaved, materia }: Pro
               <FormItem><FormLabel>Nome</FormLabel><FormControl><Input placeholder="Ex: Farinha de Trigo" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="unidade" render={({ field }) => (
+              <FormField control={form.control} name="unidade_medida" render={({ field }) => (
                 <FormItem><FormLabel>Unidade</FormLabel><FormControl>
                   <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2">
                     <option value="g">g</option><option value="kg">kg</option>

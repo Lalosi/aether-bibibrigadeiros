@@ -37,9 +37,15 @@ const ConfiguracoesPage = () => {
 
   const load = async () => {
     setLoading(true);
+    const isPrivileged = currentRole === 'master' || currentRole === 'admin';
+
+    // Privileged users: pivot on user_roles (visible to all auth'd users)
+    // and left-join profiles. Regular users: only own profile.
     const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
-      supabase.from('profiles').select('*'),
-      supabase.from('user_roles').select('*'),
+      isPrivileged
+        ? supabase.from('profiles').select('*')
+        : supabase.from('profiles').select('*'),
+      supabase.from('user_roles').select('id, user_id, role, profile:profiles(*)'),
     ]);
     if (pErr || rErr) {
       toast.error('Erro ao carregar usuários', { description: (pErr ?? rErr)?.message });
@@ -47,7 +53,13 @@ const ConfiguracoesPage = () => {
       return;
     }
     const priority: AppRole[] = ['master', 'admin', 'funcionario'];
-    const profileList: any[] = profiles ?? [];
+    const profileMap = new Map<string, any>();
+    for (const p of (profiles ?? []) as any[]) profileMap.set(p.id, p);
+    // Enrich from joined profile data inside user_roles
+    for (const r of (roles ?? []) as any[]) {
+      if (r.profile && !profileMap.has(r.user_id)) profileMap.set(r.user_id, r.profile);
+    }
+    const profileList: any[] = Array.from(profileMap.values());
     const roleList: any[] = roles ?? [];
 
     // Start from profiles

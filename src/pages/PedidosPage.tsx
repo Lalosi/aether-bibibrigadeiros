@@ -32,6 +32,13 @@ interface PedidoRow {
   cliente?: { nome: string } | null;
 }
 
+interface PedidoItemDetalhe {
+  id: number;
+  quantidade: number;
+  preco_unitario: number;
+  produto?: { nome: string } | null;
+}
+
 const STATUS_OPTIONS = [
   'Aguardando Pagamento', 'Confirmado', 'Em Preparo', 'Em Entrega', 'Entregue', 'Cancelado',
 ];
@@ -64,6 +71,8 @@ const PedidosPage = () => {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [detalhe, setDetalhe] = useState<PedidoRow | null>(null);
+  const [detalheItens, setDetalheItens] = useState<PedidoItemDetalhe[]>([]);
+  const [detalheLoading, setDetalheLoading] = useState(false);
   const [toCancel, setToCancel] = useState<PedidoRow | null>(null);
   const [popup, setPopup] = useState<{ title: string; cls: string; data: any } | null>(null);
 
@@ -82,6 +91,25 @@ const PedidosPage = () => {
   }, []);
 
   useEffect(() => { fetchPedidos(); }, [fetchPedidos]);
+
+  // Load itens whenever a detalhe is opened
+  useEffect(() => {
+    if (!detalhe) { setDetalheItens([]); return; }
+    let cancelled = false;
+    (async () => {
+      setDetalheLoading(true);
+      const { data, error } = await supabase
+        .from('pedidos_itens')
+        .select('id, quantidade, preco_unitario, produto:produtos(nome)')
+        .eq('pedido_id', detalhe.id);
+      if (!cancelled) {
+        if (error) toast.error('Erro ao carregar itens do pedido', { description: error.message });
+        setDetalheItens((data as any) ?? []);
+        setDetalheLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [detalhe]);
 
   // Decrement product stock for each item of a pedido
   const baixarEstoque = async (pedidoId: number): Promise<{ ok: boolean; msg?: string }> => {
@@ -304,6 +332,14 @@ const PedidosPage = () => {
           metodo_pagamento: detalhe.metodo_pagamento,
           status: detalhe.status,
           observacoes: detalhe.observacoes,
+          itens: detalheLoading
+            ? 'Carregando...'
+            : detalheItens.map((it) => ({
+                produto: it.produto?.nome ?? `#${it.id}`,
+                quantidade: Number(it.quantidade),
+                preco_unitario: Number(it.preco_unitario),
+                subtotal: Number(it.quantidade) * Number(it.preco_unitario),
+              })),
         } : null}
       />
 

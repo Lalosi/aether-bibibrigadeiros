@@ -78,13 +78,13 @@ const MateriasPrimasPage = () => {
                     <TableCell className="font-medium flex items-center gap-2">
                       <Wheat className="h-4 w-4 text-confectionery-pink" />{m.nome}
                     </TableCell>
-                    <TableCell>{m.unidade}</TableCell>
-                    <TableCell>{m.quantidade_embalagem} {m.unidade}</TableCell>
+                    <TableCell>{m.unidade_medida}</TableCell>
+                    <TableCell>{m.quantidade_embalagem} {m.unidade_medida}</TableCell>
                     <TableCell>{fmtBRL(Number(m.preco_compra))}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {fmtBRL(custoUnit)}/{m.unidade}
+                      {fmtBRL(custoUnit)}/{m.unidade_medida}
                     </TableCell>
-                    <TableCell>{Number(m.estoque_atual).toFixed(2)} {m.unidade}</TableCell>
+                    <TableCell>{Number(m.estoque_atual).toFixed(2)} {m.unidade_medida}</TableCell>
                     <TableCell>{m.fornecedor ?? '—'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
