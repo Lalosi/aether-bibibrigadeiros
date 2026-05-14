@@ -168,7 +168,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                 <FormItem className="flex flex-col">
                   <FormLabel>Cliente</FormLabel>
                   <div className="flex gap-2">
-                  <Popover open={comboOpen} onOpenChange={setComboOpen}>
+                  <Popover open={comboOpen} onOpenChange={setComboOpen} modal={true}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -176,13 +176,18 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
                           variant="outline"
                           role="combobox"
                           className={cn('flex-1 justify-between font-normal', !field.value && 'text-muted-foreground')}
+                          onClick={() => setComboOpen((o) => !o)}
                         >
                           {selected ? selected.nome : 'Buscar cliente...'}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] p-0 z-[100]"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
                       <Command shouldFilter={false}>
                         <CommandInput placeholder="Digite o nome..." value={search} onValueChange={setSearch} />
                         <CommandList>
