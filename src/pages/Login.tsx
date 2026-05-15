@@ -8,6 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { config } from '@/lib/config';
+import { supabase } from '@/integrations/supabase/client';
+
+const MASTER_UUID = '6d75b8d7-8737-4b67-ab21-b166399c0fcc';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -42,7 +45,37 @@ const Login = () => {
       title: 'Login realizado',
       description: 'Bem-vindo de volta!',
     });
-    navigate('/dashboard');
+    // Role-based redirect: master/admin → dashboard, funcionario → pedidos
+    let target = '/dashboard';
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (user.id === MASTER_UUID) {
+          target = '/dashboard';
+        } else {
+          const { data } = await supabase
+            .from('user_roles').select('role').eq('user_id', user.id);
+          const roles = (data ?? []).map((r: any) => r.role);
+          if (roles.includes('master') || roles.includes('admin')) {
+            target = '/dashboard';
+          } else if (roles.includes('funcionario')) {
+            target = '/pedidos';
+          } else {
+            toast({
+              title: 'Acesso pendente',
+              description: 'Sua conta ainda não tem permissão atribuída. Contate um administrador.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
+      } else if (config.presentationMode && password === config.bypassPassword) {
+        target = '/dashboard';
+      }
+    } catch {
+      // fallback: dashboard (ProtectedRoute irá bloquear se necessário)
+    }
+    navigate(target);
   };
 
   return (
