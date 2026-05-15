@@ -6,7 +6,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield } from 'lucide-react';
+import { Loader2, Shield, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase, type AppRole } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -34,6 +40,12 @@ const ConfiguracoesPage = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newNome, setNewNome] = useState('');
+  const [newRole, setNewRole] = useState<AppRole>('funcionario');
 
   const load = async () => {
     setLoading(true);
@@ -94,6 +106,62 @@ const ConfiguracoesPage = () => {
   useEffect(() => { load(); }, []);
 
   const isMaster = currentRole === 'master';
+  const isAdmin = currentRole === 'admin';
+  const canCreate = isMaster || isAdmin;
+
+  // Master: any role. Admin: funcionario|admin (no master).
+  const allowedNewRoles: AppRole[] = isMaster
+    ? ['funcionario', 'admin', 'master']
+    : isAdmin
+    ? ['funcionario', 'admin']
+    : [];
+
+  const handleCreateUser = async () => {
+    if (!canCreate) return;
+    if (!newEmail || !newPassword) {
+      toast.error('Preencha e-mail e senha.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (!isMaster && newRole === 'master') {
+      toast.error('Apenas Master pode criar usuários Master.');
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: newEmail,
+      password: newPassword,
+      options: { data: { nome: newNome } },
+    });
+    if (error || !data.user) {
+      setCreating(false);
+      const msg = error?.message ?? 'Erro desconhecido';
+      if (/already/i.test(msg)) {
+        toast.error('E-mail já cadastrado.');
+      } else {
+        toast.error('Erro ao criar usuário', { description: msg });
+      }
+      return;
+    }
+    // Insert role
+    const { error: roleErr } = await supabase
+      .from('user_roles')
+      .insert({ user_id: data.user.id, role: newRole });
+    setCreating(false);
+    if (roleErr) {
+      toast.error('Usuário criado, mas falha ao atribuir role', { description: roleErr.message });
+      return;
+    }
+    toast.success('Usuário criado!', {
+      description: `${newEmail} cadastrado como ${newRole}.`,
+    });
+    setOpenCreate(false);
+    setNewEmail(''); setNewPassword(''); setNewNome(''); setNewRole('funcionario');
+    load();
+  };
 
   const handleChangeRole = async (row: Row, newRole: AppRole) => {
     if (!isMaster) {
@@ -134,8 +202,16 @@ const ConfiguracoesPage = () => {
 
         <TabsContent value="usuarios" className="mt-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Perfis & Permissões</CardTitle>
+              {canCreate && (
+                <Button
+                  onClick={() => setOpenCreate(true)}
+                  className="bg-confectionery-pink hover:bg-confectionery-pink/80"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" /> Convidar/Criar Usuário
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -199,6 +275,59 @@ const ConfiguracoesPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar novo usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nome</Label>
+              <Input value={newNome} onChange={(e) => setNewNome(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Senha provisória</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as AppRole)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {allowedNewRoles.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              {!isMaster && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Admins não podem criar usuários Master.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenCreate(false)} disabled={creating}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateUser}
+              disabled={creating}
+              className="bg-confectionery-pink hover:bg-confectionery-pink/80"
+            >
+              {creating ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Criando...</>
+              ) : 'Criar usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };
