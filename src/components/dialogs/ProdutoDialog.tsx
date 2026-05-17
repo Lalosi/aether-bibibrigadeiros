@@ -26,6 +26,7 @@ const produtoSchema = z.object({
   tempo_producao_min: z.coerce.number().nonnegative().default(0),
   margem_desejada_pct: z.coerce.number().nonnegative().default(50),
   custo_fixo_pct: z.coerce.number().nonnegative().default(10),
+  valor_hora_trabalho: z.coerce.number().nonnegative().default(25),
 });
 
 type ProdutoFormData = z.infer<typeof produtoSchema>;
@@ -42,6 +43,7 @@ export interface ProdutoRow {
   tempo_producao_min?: number | null;
   margem_desejada_pct?: number | null;
   custo_fixo_pct?: number | null;
+  valor_hora_trabalho?: number | null;
 }
 
 interface MateriaPrima {
@@ -76,7 +78,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
   const [categorias, setCategorias] = useState<{ id: number; nome: string }[]>([]);
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
   const [ficha, setFicha] = useState<FichaItem[]>([]);
-  const [valorHora, setValorHora] = useState(0);
+  const [profileValorHora, setProfileValorHora] = useState(25);
   const [produzirQty, setProduzirQty] = useState(1);
   const [producing, setProducing] = useState(false);
   const isEdit = !!produto;
@@ -85,7 +87,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
     resolver: zodResolver(produtoSchema),
     defaultValues: {
       nome: '', categoria_id: '', preco_venda: 0, preco_custo: 0, qtd_estoque: 0, fornecedor: '',
-      tempo_producao_min: 0, margem_desejada_pct: 50, custo_fixo_pct: 10,
+      tempo_producao_min: 0, margem_desejada_pct: 50, custo_fixo_pct: 10, valor_hora_trabalho: 25,
     },
   });
 
@@ -102,7 +104,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       if (user && !isBypass) {
         const { data: prof } = await supabase
           .from('profiles').select('valor_hora_trabalho').eq('id', (user as any).id).maybeSingle();
-        setValorHora(Number((prof as any)?.valor_hora_trabalho ?? 0));
+        setProfileValorHora(Number((prof as any)?.valor_hora_trabalho ?? 25));
       }
 
       if (produto?.id) {
@@ -127,6 +129,9 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       tempo_producao_min: Number(produto?.tempo_producao_min ?? 0),
       margem_desejada_pct: Number(produto?.margem_desejada_pct ?? 50),
       custo_fixo_pct: Number(produto?.custo_fixo_pct ?? 10),
+      valor_hora_trabalho: Number(
+        produto?.valor_hora_trabalho ?? profileValorHora ?? 25,
+      ),
     });
   }, [open, produto, form, user, isBypass]);
 
@@ -134,6 +139,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
   const tempoMin = form.watch('tempo_producao_min') ?? 0;
   const margem = form.watch('margem_desejada_pct') ?? 0;
   const fixoPct = form.watch('custo_fixo_pct') ?? 0;
+  const valorHora = form.watch('valor_hora_trabalho') ?? 0;
 
   const calc = useMemo(() => {
     const custoInsumos = ficha.reduce((acc, item) => {
@@ -142,9 +148,9 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       return acc + (Number(item.quantidade_usada) / Number(mp.quantidade_embalagem)) * Number(mp.preco_compra);
     }, 0);
     const custoMaoObra = (Number(tempoMin) / 60) * Number(valorHora);
-    const subtotal = custoInsumos + custoMaoObra;
-    const custoFixo = subtotal * (Number(fixoPct) / 100);
-    const custoTotal = subtotal + custoFixo;
+    // Custo fixo aplicado SOMENTE sobre o custo de insumos
+    const custoFixo = custoInsumos * (Number(fixoPct) / 100);
+    const custoTotal = custoInsumos + custoMaoObra + custoFixo;
     const precoMinimo = custoTotal;
     const precoSugerido = custoTotal * (1 + Number(margem) / 100);
     return { custoInsumos, custoMaoObra, custoFixo, custoTotal, precoMinimo, precoSugerido };
@@ -189,6 +195,7 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       tempo_producao_min: data.tempo_producao_min,
       margem_desejada_pct: data.margem_desejada_pct,
       custo_fixo_pct: data.custo_fixo_pct,
+      valor_hora_trabalho: data.valor_hora_trabalho,
     };
 
     let savedId = produto?.id;
@@ -364,18 +371,34 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
               </TabsContent>
 
               <TabsContent value="precificacao" className="space-y-4 mt-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="valor_hora_trabalho" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor hora trabalho (R$)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Sugestão inicial vinda do seu perfil ({fmtBRL(profileValorHora)}). Editável e salvo por produto.
+                      </p>
+                    </FormItem>
+                  )} />
                   <FormField control={form.control} name="tempo_producao_min" render={({ field }) => (
                     <FormItem><FormLabel>Tempo (min)</FormLabel>
                       <FormControl><Input type="number" {...field} /></FormControl></FormItem>
                   )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="margem_desejada_pct" render={({ field }) => (
                     <FormItem><FormLabel>Margem desejada (%)</FormLabel>
                       <FormControl><Input type="number" step="0.1" {...field} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="custo_fixo_pct" render={({ field }) => (
-                    <FormItem><FormLabel>Custo fixo (%)</FormLabel>
-                      <FormControl><Input type="number" step="0.1" {...field} /></FormControl></FormItem>
+                    <FormItem>
+                      <FormLabel>Custo fixo (%)</FormLabel>
+                      <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Percentual aplicado sobre o custo de insumos para cobrir gastos indiretos como gás, energia e limpeza.
+                      </p>
+                    </FormItem>
                   )} />
                 </div>
                 <div className="rounded-lg border bg-muted/50 p-4 font-mono text-sm space-y-1">
@@ -384,7 +407,10 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
                     <span>Mão de Obra ({tempoMin}min × {fmtBRL(valorHora)}/h)</span>
                     <span>{fmtBRL(calc.custoMaoObra)}</span>
                   </div>
-                  <div className="flex justify-between"><span>Custos Fixos ({fixoPct}%)</span><span>{fmtBRL(calc.custoFixo)}</span></div>
+                  <div className="flex justify-between">
+                    <span>Custos Fixos ({fixoPct}% sobre insumos)</span>
+                    <span>{fmtBRL(calc.custoFixo)}</span>
+                  </div>
                   <div className="border-t border-border my-1" />
                   <div className="flex justify-between font-semibold">
                     <span>Custo Total de Produção</span><span>{fmtBRL(calc.custoTotal)}</span>
@@ -396,8 +422,8 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
                     <span>Preço Sugerido (margem {margem}%)</span><span>{fmtBRL(calc.precoSugerido)}</span>
                   </div>
                 </div>
-                {valorHora === 0 && (
-                  <p className="text-xs text-amber-700">⚠️ Defina <strong>valor_hora_trabalho</strong> no seu Perfil para calcular mão de obra.</p>
+                {Number(valorHora) === 0 && (
+                  <p className="text-xs text-amber-700">⚠️ Defina o <strong>valor hora trabalho</strong> acima para calcular mão de obra.</p>
                 )}
                 <Button type="button" variant="outline" onClick={aplicarPrecoSugerido}>
                   <Calculator className="h-4 w-4 mr-2" /> Aplicar preço sugerido

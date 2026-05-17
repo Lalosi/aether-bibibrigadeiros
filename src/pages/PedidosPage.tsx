@@ -36,6 +36,7 @@ interface PedidoItemDetalhe {
   id: number;
   quantidade: number;
   preco_unitario: number;
+  produto_nome?: string | null;
   produto?: { nome: string } | null;
 }
 
@@ -100,7 +101,7 @@ const PedidosPage = () => {
       setDetalheLoading(true);
       const { data, error } = await supabase
         .from('pedidos_itens')
-        .select('id, quantidade, preco_unitario, produto:produtos(nome)')
+        .select('id, quantidade, preco_unitario, produto_nome, produto:produtos(nome)')
         .eq('pedido_id', detalhe.id);
       if (!cancelled) {
         if (error) toast.error('Erro ao carregar itens do pedido', { description: error.message });
@@ -147,13 +148,8 @@ const PedidosPage = () => {
   const handleStatusChange = async (pedido: PedidoRow, novo: string) => {
     if (novo === pedido.status) return;
     const updates: any = { status: novo };
-    // Going to Entregue → baixa estoque (only once)
-    if (novo === 'Entregue' && !pedido.estoque_baixado) {
-      const res = await baixarEstoque(pedido.id);
-      if (!res.ok) { toast.error('Não foi possível finalizar', { description: res.msg }); return; }
-      updates.estoque_baixado = true;
-    }
-    // Going to Cancelado after baixa → estorna
+    // Reserva é feita ao criar o pedido — "Entregue" apenas confirma, sem mexer no estoque.
+    // "Cancelado" devolve os itens ao estoque, se ainda estiverem baixados.
     if (novo === 'Cancelado' && pedido.estoque_baixado) {
       await estornarEstoque(pedido.id);
       updates.estoque_baixado = false;
@@ -335,7 +331,7 @@ const PedidosPage = () => {
           itens: detalheLoading
             ? 'Carregando...'
             : detalheItens.map((it) => ({
-                produto: it.produto?.nome ?? `#${it.id}`,
+                produto: it.produto?.nome ?? it.produto_nome ?? `#${it.id}`,
                 quantidade: Number(it.quantidade),
                 preco_unitario: Number(it.preco_unitario),
                 subtotal: Number(it.quantidade) * Number(it.preco_unitario),

@@ -110,6 +110,25 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
       toast.error('Existem itens incompletos no pedido.');
       return;
     }
+    // ===== Reserva imediata: valida estoque para TODOS os itens antes de criar =====
+    // Agrega quantidades por produto (caso o mesmo produto apareça em vários itens)
+    const totals = new Map<string, number>();
+    for (const it of itens) {
+      totals.set(it.produto_id, (totals.get(it.produto_id) ?? 0) + Number(it.quantidade));
+    }
+    for (const [pid, qtd] of totals.entries()) {
+      const p = produtos.find((pr) => pr.id === pid);
+      if (!p) {
+        toast.error('Produto não encontrado', { description: `ID ${pid}` });
+        return;
+      }
+      if (Number(p.qtd_estoque) < qtd) {
+        toast.error(`Estoque insuficiente: ${p.nome}`, {
+          description: `Necessário: ${qtd} | Disponível: ${p.qtd_estoque}`,
+        });
+        return;
+      }
+    }
     setIsSubmitting(true);
     const payload = {
       cliente_id: Number(data.cliente_id),
@@ -118,6 +137,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
       status: data.status,
       observacoes: data.observacoes || null,
       data_pedido: new Date().toISOString(),
+      estoque_baixado: true,
     };
     const { data: inserted, error } = await supabase
       .from('pedidos').insert(payload).select().single();
@@ -131,14 +151,24 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     const itemsPayload = itens.map((it) => ({
       pedido_id: pedidoId,
       produto_id: it.produto_id,
+      produto_nome: produtos.find((p) => p.id === it.produto_id)?.nome ?? null,
       quantidade: it.quantidade,
       preco_unitario: it.preco_unitario,
     }));
     const { error: itErr } = await supabase.from('pedidos_itens').insert(itemsPayload);
-    setIsSubmitting(false);
     if (itErr) {
+      setIsSubmitting(false);
       toast.error('Pedido criado, mas itens falharam', { description: itErr.message });
+      return;
     }
+    // ===== Baixa imediata de estoque (reserva) =====
+    for (const [pid, qtd] of totals.entries()) {
+      const p = produtos.find((pr) => pr.id === pid);
+      if (!p) continue;
+      const novo = Number(p.qtd_estoque) - qtd;
+      await supabase.from('produtos').update({ qtd_estoque: novo }).eq('id', pid);
+    }
+    setIsSubmitting(false);
     toast.success('Pedido criado!');
     onShowObject?.('Pedido Cadastrado', 'Pedido', { ...(inserted as any), itens: itemsPayload });
     onSaved();
