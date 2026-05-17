@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield, UserPlus } from 'lucide-react';
+import { Loader2, Shield, UserPlus, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -46,6 +46,11 @@ const ConfiguracoesPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newNome, setNewNome] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('funcionario');
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [editNome, setEditNome] = useState('');
+  const [editRole, setEditRole] = useState<AppRole>('funcionario');
+  const [editSaving, setEditSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -131,13 +136,22 @@ const ConfiguracoesPage = () => {
       return;
     }
     setCreating(true);
+    // Preserve current session to restore after signUp (which auto-logs the new user)
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data, error } = await supabase.auth.signUp({
       email: newEmail,
       password: newPassword,
-      options: { data: { nome: newNome } },
+      options: { data: { nome: newNome, role: newRole } },
     });
+    // Restore the original session immediately
+    if (currentSession) {
+      await supabase.auth.setSession({
+        access_token: currentSession.access_token,
+        refresh_token: currentSession.refresh_token,
+      });
+    }
+    setCreating(false);
     if (error || !data.user) {
-      setCreating(false);
       const msg = error?.message ?? 'Erro desconhecido';
       if (/already/i.test(msg)) {
         toast.error('E-mail já cadastrado.');
@@ -146,21 +160,77 @@ const ConfiguracoesPage = () => {
       }
       return;
     }
-    // Insert role
-    const { error: roleErr } = await supabase
-      .from('user_roles')
-      .insert({ user_id: data.user.id, role: newRole });
-    setCreating(false);
-    if (roleErr) {
-      toast.error('Usuário criado, mas falha ao atribuir role', { description: roleErr.message });
-      return;
-    }
     toast.success('Usuário criado!', {
       description: `${newEmail} cadastrado como ${newRole}.`,
     });
     setOpenCreate(false);
     setNewEmail(''); setNewPassword(''); setNewNome(''); setNewRole('funcionario');
     load();
+  };
+
+  const canEditRow = (row: Row) => {
+    if (isMaster) return true;
+    if (isAdmin) return row.role !== 'master';
+    return false;
+  };
+
+  const openEdit = (row: Row) => {
+    setEditing(row);
+    setEditNome(row.profile.nome ?? '');
+    setEditRole(row.role);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    if (!isMaster && editRole === 'master') {
+      toast.error('Admins não podem promover para Master.');
+      return;
+    }
+    setEditSaving(true);
+    // Update name
+    if (editNome !== (editing.profile.nome ?? '')) {
+      const { error: pErr } = await supabase
+        .from('profiles').update({ nome: editNome }).eq('id', editing.profile.id);
+      if (pErr) {
+        setEditSaving(false);
+        toast.error('Erro ao atualizar nome', { description: pErr.message });
+        return;
+      }
+    }
+    // Update role if changed
+    if (editRole !== editing.role) {
+      await supabase.from('user_roles').delete().eq('user_id', editing.profile.id);
+      const { error: rErr } = await supabase
+        .from('user_roles').insert({ user_id: editing.profile.id, role: editRole });
+      if (rErr) {
+        setEditSaving(false);
+        toast.error('Erro ao atualizar permissão', { description: rErr.message });
+        return;
+      }
+    }
+    setEditSaving(false);
+    toast.success('Usuário atualizado!');
+    setEditing(null);
+    load();
+  };
+
+  const handleResetPassword = async () => {
+    if (!editing?.profile.email) {
+      toast.error('Usuário sem e-mail cadastrado.');
+      return;
+    }
+    setResetting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(editing.profile.email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setResetting(false);
+    if (error) {
+      toast.error('Erro ao enviar redefinição', { description: error.message });
+      return;
+    }
+    toast.success('E-mail de redefinição enviado!', {
+      description: editing.profile.email,
+    });
   };
 
   const handleChangeRole = async (row: Row, newRole: AppRole) => {
@@ -229,7 +299,7 @@ const ConfiguracoesPage = () => {
                       <TableHead>Nome</TableHead>
                       <TableHead>E-mail</TableHead>
                       <TableHead>Role atual</TableHead>
-                      <TableHead>Alterar permissão</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -246,29 +316,25 @@ const ConfiguracoesPage = () => {
                             {row.role}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <select
-                            disabled={!isMaster || savingId === row.profile.id}
-                            value={row.role}
-                            onChange={(e) => handleChangeRole(row, e.target.value as AppRole)}
-                            className="rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={!canEditRow(row)}
+                            onClick={() => openEdit(row)}
+                            title="Editar usuário"
                           >
-                            {ROLES.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
-                          </select>
-                          {savingId === row.profile.id && (
-                            <Loader2 className="inline h-4 w-4 ml-2 animate-spin" />
-                          )}
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               )}
-              {!isMaster && (
+              {!isMaster && !isAdmin && (
                 <p className="text-xs text-muted-foreground mt-4">
-                  Somente usuários com role <strong>master</strong> podem alterar permissões.
+                  Somente Master ou Admin podem alterar permissões.
                 </p>
               )}
             </CardContent>
@@ -324,6 +390,70 @@ const ConfiguracoesPage = () => {
               {creating ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Criando...</>
               ) : 'Criar usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar usuário</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4">
+              <div>
+                <Label>E-mail</Label>
+                <Input value={editing.profile.email ?? ''} disabled className="mt-1" />
+              </div>
+              <div>
+                <Label>Nome</Label>
+                <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label>Role</Label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as AppRole)}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {(isMaster ? ROLES : (['funcionario','admin'] as AppRole[])).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+                {!isMaster && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Admins não podem promover para Master.
+                  </p>
+                )}
+              </div>
+              <div className="rounded-md border p-3 bg-muted/30">
+                <p className="text-sm font-medium mb-2">Redefinir senha</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Envia um e-mail ao usuário com link para criar nova senha.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetPassword}
+                  disabled={resetting || !editing.profile.email}
+                >
+                  {resetting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>) : 'Enviar e-mail de redefinição'}
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={editSaving}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={editSaving}
+              className="bg-confectionery-pink hover:bg-confectionery-pink/80"
+            >
+              {editSaving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>) : 'Salvar alterações'}
             </Button>
           </DialogFooter>
         </DialogContent>
