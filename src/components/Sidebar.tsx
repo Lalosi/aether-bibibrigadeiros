@@ -45,13 +45,13 @@ const Sidebar = () => {
   };
 
   const items: Item[] = [
-    { name: 'Dashboard', path: '/dashboard', icon: Home, show: config.showDashboard, allow: ['admin', 'master'] },
+    { name: 'Dashboard', path: '/dashboard', icon: Home, show: config.showDashboard, allow: ['master'] },
     { name: 'Estoque', path: '/estoque', icon: PackageOpen, show: config.showEstoque, allow: ['admin', 'master'] },
     { name: 'Matérias-Primas', path: '/materias-primas', icon: Wheat, show: config.showMateriasPrimas, allow: ['admin', 'master'] },
-    { name: 'Relatórios', path: '/relatorios', icon: FileText, show: config.showRelatorios, allow: ['admin', 'master'] },
+    { name: 'Relatórios', path: '/relatorios', icon: FileText, show: config.showRelatorios, allow: ['master'] },
     { name: 'Clientes', path: '/clientes', icon: Users, show: config.showClientes, allow: ['funcionario', 'admin', 'master'] },
     { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart, show: config.showPedidos, allow: ['funcionario', 'admin', 'master'] },
-    { name: 'Loja', path: '/comprar', icon: Store, show: config.showLoja, allow: ['funcionario', 'admin', 'master'] },
+    { name: 'Loja', path: '/comprar', icon: Store, show: config.showLoja, allow: ['master'] },
   ];
 
   const visible = items.filter((i) => i.show && (!role || i.allow.includes(role)));
