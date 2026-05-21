@@ -23,6 +23,13 @@ const formatValue = (v: any): { text: string; tone: string } => {
   if (typeof v === 'number') return { text: String(v), tone: 'text-amber-600 dark:text-amber-400' };
   if (typeof v === 'boolean') return { text: String(v), tone: 'text-purple-600 dark:text-purple-400' };
   if (v instanceof Date) return { text: `"${v.toLocaleString('pt-BR')}"`, tone: 'text-emerald-600 dark:text-emerald-400' };
+  if (Array.isArray(v) || (typeof v === 'object' && v !== null)) {
+    try {
+      return { text: JSON.stringify(v, null, 2), tone: 'text-cyan-300' };
+    } catch {
+      return { text: '[unserializable]', tone: 'text-muted-foreground italic' };
+    }
+  }
   return { text: `"${String(v)}"`, tone: 'text-emerald-600 dark:text-emerald-400' };
 };
 
@@ -81,11 +88,16 @@ export const ObjectPopup = ({
               )}
               {entries.map(([key, value], idx) => {
                 const { text, tone } = formatValue(value);
+                const isBlock = Array.isArray(value) || (typeof value === 'object' && value !== null && !(value instanceof Date));
                 return (
                   <div key={key} className="pl-4">
                     <span className="text-sky-300">"{key}"</span>
                     <span className="text-slate-400">: </span>
-                    <span className={tone}>{text}</span>
+                    {isBlock ? (
+                      <pre className={`${tone} whitespace-pre-wrap break-words inline-block align-top`}>{text}</pre>
+                    ) : (
+                      <span className={tone}>{text}</span>
+                    )}
                     {idx < entries.length - 1 && <span className="text-slate-500">,</span>}
                   </div>
                 );
