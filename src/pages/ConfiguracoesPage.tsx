@@ -138,6 +138,9 @@ const ConfiguracoesPage = () => {
     setCreating(true);
     // Preserve current session to restore after signUp (which auto-logs the new user)
     const { data: { session: currentSession } } = await supabase.auth.getSession();
+    // Supabase bloqueia signUp via client quando já existe sessão ativa.
+    // Faz signOut antes do signUp e restaura a sessão original em seguida.
+    await supabase.auth.signOut();
     const { data, error } = await supabase.auth.signUp({
       email: newEmail,
       password: newPassword,

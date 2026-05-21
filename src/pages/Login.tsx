@@ -43,7 +43,11 @@ const Login = () => {
       title: 'Login realizado',
       description: 'Bem-vindo de volta!',
     });
-    // Role-based redirect: master/admin → dashboard, funcionario → pedidos
+    // Role-based redirect:
+    //   master  → /dashboard
+    //   admin   → /pedidos
+    //   funcionario → /pedidos
+    //   sem role → /acesso-pendente
     let target = '/dashboard';
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -51,18 +55,14 @@ const Login = () => {
         const { data } = await supabase
           .from('user_roles').select('role').eq('user_id', user.id);
         const roles = (data ?? []).map((r: any) => r.role);
-        if (roles.includes('master') || roles.includes('admin')) {
+        if (roles.includes('master')) {
           target = '/dashboard';
+        } else if (roles.includes('admin')) {
+          target = '/pedidos';
         } else if (roles.includes('funcionario')) {
           target = '/pedidos';
         } else {
-          toast({
-            title: 'Acesso pendente',
-            description: 'Sua conta ainda não tem permissão atribuída. Contate um administrador.',
-            variant: 'destructive',
-          });
-          await supabase.auth.signOut();
-          return;
+          target = '/acesso-pendente';
         }
       } else if (config.presentationMode && password === config.bypassPassword) {
         target = '/dashboard';
