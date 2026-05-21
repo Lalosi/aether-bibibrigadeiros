@@ -80,10 +80,12 @@ const Sidebar = () => {
       </nav>
       
       <div className="p-4 border-t border-confectionery-pink/20 space-y-2">
-        <Link to="/configuracoes" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-confectionery-pink/20 animate-hover">
-          <Settings size={18} />
-          <span>Configurações</span>
-        </Link>
+        {role === 'master' && (
+          <Link to="/configuracoes" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-confectionery-pink/20 animate-hover">
+            <Settings size={18} />
+            <span>Configurações</span>
+          </Link>
+        )}
         <button 
           onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 w-full text-left animate-hover"
