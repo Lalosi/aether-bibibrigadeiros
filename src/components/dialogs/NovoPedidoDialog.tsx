@@ -75,7 +75,14 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
 
   const loadProdutos = async () => {
     const { data } = await supabase.from('produtos').select('id, nome, preco_venda, qtd_estoque').order('nome');
-    setProdutos((data as ProdutoOption[]) ?? []);
+    // Normaliza o id para string (o <select> trabalha com string; o DB aceita bigint via coerção).
+    const normalized: ProdutoOption[] = (data ?? []).map((p: any) => ({
+      id: String(p.id),
+      nome: p.nome,
+      preco_venda: Number(p.preco_venda),
+      qtd_estoque: Number(p.qtd_estoque),
+    }));
+    setProdutos(normalized);
   };
 
   const totalCalc = itens.reduce((acc, it) => acc + it.preco_unitario * it.quantidade, 0);
@@ -87,7 +94,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
       if (idx !== i) return x;
       const merged = { ...x, ...patch };
       if (patch.produto_id) {
-        const p = produtos.find((pr) => pr.id === patch.produto_id);
+        const p = produtos.find((pr) => String(pr.id) === String(patch.produto_id));
         if (p) merged.preco_unitario = Number(p.preco_venda);
       }
       return merged;
@@ -117,7 +124,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
       totals.set(it.produto_id, (totals.get(it.produto_id) ?? 0) + Number(it.quantidade));
     }
     for (const [pid, qtd] of totals.entries()) {
-      const p = produtos.find((pr) => pr.id === pid);
+      const p = produtos.find((pr) => String(pr.id) === String(pid));
       if (!p) {
         toast.error('Produto não encontrado', { description: `ID ${pid}` });
         return;
@@ -150,10 +157,11 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     const pedidoId = (inserted as any).id;
     const itemsPayload = itens.map((it) => ({
       pedido_id: pedidoId,
-      produto_id: it.produto_id,
-      produto_nome: produtos.find((p) => p.id === it.produto_id)?.nome ?? null,
-      quantidade: it.quantidade,
-      preco_unitario: it.preco_unitario,
+      produto_id: Number(it.produto_id),
+      produto_nome:
+        produtos.find((p) => String(p.id) === String(it.produto_id))?.nome ?? null,
+      quantidade: Number(it.quantidade),
+      preco_unitario: Number(it.preco_unitario),
     }));
     const { error: itErr } = await supabase.from('pedidos_itens').insert(itemsPayload);
     if (itErr) {
@@ -163,10 +171,10 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     }
     // ===== Baixa imediata de estoque (reserva) =====
     for (const [pid, qtd] of totals.entries()) {
-      const p = produtos.find((pr) => pr.id === pid);
+      const p = produtos.find((pr) => String(pr.id) === String(pid));
       if (!p) continue;
       const novo = Number(p.qtd_estoque) - qtd;
-      await supabase.from('produtos').update({ qtd_estoque: novo }).eq('id', pid);
+      await supabase.from('produtos').update({ qtd_estoque: novo }).eq('id', Number(pid));
     }
     setIsSubmitting(false);
     toast.success('Pedido criado!');

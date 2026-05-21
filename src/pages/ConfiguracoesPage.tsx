@@ -215,12 +215,20 @@ const ConfiguracoesPage = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!editing?.profile.email) {
+    if (!editing) return;
+    let targetEmail = editing.profile.email ?? null;
+    // Fallback: tenta resgatar o e-mail diretamente da tabela profiles
+    if (!targetEmail) {
+      const { data } = await supabase
+        .from('profiles').select('email').eq('id', editing.profile.id).maybeSingle();
+      targetEmail = (data as any)?.email ?? null;
+    }
+    if (!targetEmail) {
       toast.error('Usuário sem e-mail cadastrado.');
       return;
     }
     setResetting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(editing.profile.email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
       redirectTo: `${window.location.origin}/login`,
     });
     setResetting(false);
@@ -229,7 +237,7 @@ const ConfiguracoesPage = () => {
       return;
     }
     toast.success('E-mail de redefinição enviado!', {
-      description: editing.profile.email,
+      description: targetEmail,
     });
   };
 
@@ -404,7 +412,12 @@ const ConfiguracoesPage = () => {
             <div className="space-y-4">
               <div>
                 <Label>E-mail</Label>
-                <Input value={editing.profile.email ?? ''} disabled className="mt-1" />
+                <p className="mt-1 text-sm font-mono px-3 py-2 rounded-md bg-muted/50 text-muted-foreground">
+                  {editing.profile.email ?? '— (sem e-mail no perfil)'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  O e-mail é gerenciado pela autenticação e não pode ser alterado aqui.
+                </p>
               </div>
               <div>
                 <Label>Nome</Label>
@@ -437,7 +450,7 @@ const ConfiguracoesPage = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleResetPassword}
-                  disabled={resetting || !editing.profile.email}
+                  disabled={resetting}
                 >
                   {resetting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>) : 'Enviar e-mail de redefinição'}
                 </Button>
