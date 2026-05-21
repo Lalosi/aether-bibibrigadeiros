@@ -175,5 +175,9 @@ export const ProtectedRoute: React.FC<{
       </div>
     );
   }
+  if (user && !role) {
+    window.location.replace('/acesso-pendente');
+    return null;
+  }
   return <>{children}</>;
 };
