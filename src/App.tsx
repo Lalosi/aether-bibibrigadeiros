@@ -18,10 +18,16 @@ import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import PerfilPage from "./pages/PerfilPage";
 import AcessoPendente from "./pages/AcessoPendente";
 import { AuthProvider, ProtectedRoute } from "./hooks/useAuth";
+import { useEffect } from "react";
+import { config } from "@/lib/config";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    document.title = `${config.appName} - Sistema de Gestão para Confeitarias`;
+  }, []);
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -50,5 +56,6 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
+};
 
 export default App;
