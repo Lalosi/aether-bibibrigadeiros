@@ -128,11 +128,6 @@ const Login = () => {
             <Button type="submit" disabled={submitting} className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80">
               {submitting ? 'Entrando…' : 'Entrar'}
             </Button>
-            {config.presentationMode && (
-              <p className="text-xs text-center text-muted-foreground">
-                Modo Apresentação ativo: qualquer email + senha <code className="font-mono">teste</code> entra como <strong>master</strong>.
-              </p>
-            )}
             
             <div className="relative mt-6">
               <div className="absolute inset-0 flex items-center">
