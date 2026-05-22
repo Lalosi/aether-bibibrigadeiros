@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
@@ -7,132 +6,110 @@ import SimpleCard from '@/components/SimpleCard';
 import ChartCard from '@/components/ChartCard';
 import { Package, ArrowUpRight, ShoppingCart, Users, CreditCard, Wheat } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
-// Dados de exemplo
-const vendas = [
-  { name: 'Jan', vendas: 40000, lucro: 24000 },
-  { name: 'Fev', vendas: 30000, lucro: 18000 },
-  { name: 'Mar', vendas: 20000, lucro: 12000 },
-  { name: 'Abr', vendas: 27000, lucro: 16000 },
-  { name: 'Mai', vendas: 18000, lucro: 11000 },
-  { name: 'Jun', vendas: 23000, lucro: 14000 },
-];
+const fmtBRL = (v: number) =>
+  Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const vendasSemanais = [
-  { name: 'Dom', vendas: 12000, compras: 8000 },
-  { name: 'Seg', vendas: 19000, compras: 11000 },
-  { name: 'Ter', vendas: 15000, compras: 9000 },
-  { name: 'Qua', vendas: 22000, compras: 13000 },
-  { name: 'Qui', vendas: 17000, compras: 10000 },
-  { name: 'Sex', vendas: 25000, compras: 15000 },
-  { name: 'Sáb', vendas: 30000, compras: 18000 },
-];
-
-const pedidosRecentes = [
-  { id: 1, cliente: 'Maria Silva', produto: 'Bolo de Chocolate', valor: 'R$89,90', status: 'Entregue' },
-  { id: 2, cliente: 'João Santos', produto: 'Torta de Morango', valor: 'R$75,50', status: 'Em Preparo' },
-  { id: 3, cliente: 'Ana Oliveira', produto: 'Kit Festa', valor: 'R$250,00', status: 'Aguardando' },
-];
+const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const Dashboard = () => {
+  const [faturamentoMes, setFaturamentoMes] = useState(0);
+  const [vendasDia, setVendasDia] = useState(0);
+  const [totalEstoque, setTotalEstoque] = useState(0);
+  const [totalClientes, setTotalClientes] = useState(0);
+  const [recentes, setRecentes] = useState<any[]>([]);
   const [finais, setFinais] = useState<{ id: string; nome: string; qtd_estoque: number }[]>([]);
   const [insumos, setInsumos] = useState<{ id: string; nome: string; estoque_atual: number; unidade_medida: string }[]>([]);
+  const [serieMensal, setSerieMensal] = useState<{ name: string; vendas: number }[]>([]);
+  const [serieSemanal, setSerieSemanal] = useState<{ name: string; vendas: number }[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [{ data: p }, { data: m }] = await Promise.all([
+      const now = new Date();
+      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const startDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const startYear = new Date(now.getFullYear(), 0, 1).toISOString();
+      const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [
+        pedidosMes, pedidosDia, prodEstoque, clientesCount, recentesData,
+        topFinais, topInsumos, pedidosAno, pedidos7d,
+      ] = await Promise.all([
+        supabase.from('pedidos').select('valor_total, status').gte('data_pedido', startMonth).eq('status', 'Entregue'),
+        supabase.from('pedidos').select('valor_total, status').gte('data_pedido', startDay).eq('status', 'Entregue'),
+        supabase.from('produtos').select('qtd_estoque'),
+        supabase.from('clientes').select('id', { count: 'exact', head: true }),
+        supabase.from('pedidos').select('id, valor_total, status, data_pedido, cliente:clientes(nome)').order('data_pedido', { ascending: false }).limit(5),
         supabase.from('produtos').select('id, nome, qtd_estoque').order('qtd_estoque', { ascending: true }).limit(5),
         supabase.from('materias_primas').select('id, nome, estoque_atual, unidade_medida').order('estoque_atual', { ascending: true }).limit(5),
+        supabase.from('pedidos').select('valor_total, data_pedido, status').gte('data_pedido', startYear).eq('status', 'Entregue'),
+        supabase.from('pedidos').select('valor_total, data_pedido, status').gte('data_pedido', start7d).eq('status', 'Entregue'),
       ]);
-      setFinais((p as any) ?? []);
-      setInsumos((m as any) ?? []);
+
+      setFaturamentoMes((pedidosMes.data ?? []).reduce((s, p: any) => s + Number(p.valor_total || 0), 0));
+      setVendasDia((pedidosDia.data ?? []).reduce((s, p: any) => s + Number(p.valor_total || 0), 0));
+      setTotalEstoque((prodEstoque.data ?? []).reduce((s, p: any) => s + Number(p.qtd_estoque || 0), 0));
+      setTotalClientes(clientesCount.count ?? 0);
+      setRecentes(recentesData.data ?? []);
+      setFinais((topFinais.data as any) ?? []);
+      setInsumos((topInsumos.data as any) ?? []);
+
+      const mensal = Array.from({ length: 12 }, (_, i) => ({ name: MESES_PT[i], vendas: 0 }));
+      (pedidosAno.data ?? []).forEach((p: any) => {
+        const m = new Date(p.data_pedido).getMonth();
+        mensal[m].vendas += Number(p.valor_total || 0);
+      });
+      setSerieMensal(mensal);
+
+      const semanal = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+        return { name: DIAS_PT[d.getDay()], vendas: 0, _date: d.toDateString() };
+      });
+      (pedidos7d.data ?? []).forEach((p: any) => {
+        const dStr = new Date(p.data_pedido).toDateString();
+        const bucket = semanal.find((b) => b._date === dStr);
+        if (bucket) bucket.vendas += Number(p.valor_total || 0);
+      });
+      setSerieSemanal(semanal.map(({ _date, ...r }) => r));
     })();
   }, []);
 
   return (
     <MainLayout title="Dashboard">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard 
-          title="Faturamento Mensal" 
-          value="R$ 18.300" 
-          subtitle="Último mês"
-          icon={<ArrowUpRight size={18} />} 
-          color="pink"
-        />
-        <StatCard 
-          title="Vendas" 
-          value="R$ 950" 
-          subtitle="Último dia"
-          icon={<CreditCard size={18} />} 
-          color="yellow"
-        />
-        <StatCard 
-          title="Produtos em Estoque" 
-          value="688" 
-          subtitle="200 a receber"
-          icon={<Package size={18} />} 
-          color="green"
-        />
-        <StatCard 
-          title="Total de Clientes" 
-          value="31" 
-          subtitle="5 novos este mês"
-          icon={<Users size={18} />} 
-          color="purple"
-        />
+        <StatCard title="Faturamento Mensal" value={fmtBRL(faturamentoMes)} subtitle="Pedidos entregues no mês" icon={<ArrowUpRight size={18} />} color="pink" />
+        <StatCard title="Vendas do Dia" value={fmtBRL(vendasDia)} subtitle="Pedidos entregues hoje" icon={<CreditCard size={18} />} color="yellow" />
+        <StatCard title="Produtos em Estoque" value={String(totalEstoque)} subtitle="Soma das unidades" icon={<Package size={18} />} color="green" />
+        <StatCard title="Total de Clientes" value={String(totalClientes)} subtitle="Cadastrados" icon={<Users size={18} />} color="purple" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Lucro & Receita" actions={<span className="text-xs bg-confectionery-yellow/30 px-2 py-1 rounded-md">Mensal</span>}>
+        <ChartCard title="Faturamento Mensal" actions={<span className="text-xs bg-confectionery-yellow/30 px-2 py-1 rounded-md">Ano atual</span>}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={vendas}>
+            <LineChart data={serieMensal}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)' 
-                }} 
-              />
+              <Tooltip formatter={(v: any) => fmtBRL(Number(v))} />
               <Legend />
-              <Line type="monotone" dataKey="vendas" stroke="#F9A8D4" strokeWidth={2} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="lucro" stroke="#0B2559" strokeWidth={2} />
+              <Line type="monotone" dataKey="vendas" name="Vendas" stroke="#F9A8D4" strokeWidth={2} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Vendas e Compras" actions={<span className="text-xs bg-confectionery-yellow/30 px-2 py-1 rounded-md">Semanal</span>}>
+        <ChartCard title="Vendas dos últimos 7 dias" actions={<span className="text-xs bg-confectionery-yellow/30 px-2 py-1 rounded-md">Semanal</span>}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={vendasSemanais}>
+            <BarChart data={serieSemanal}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)' 
-                }}
-              />
+              <Tooltip formatter={(v: any) => fmtBRL(Number(v))} />
               <Legend />
-              <Bar dataKey="vendas" fill="#F9A8D4" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="compras" fill="#0B2559" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="vendas" name="Vendas" fill="#F9A8D4" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -146,26 +123,27 @@ const Dashboard = () => {
                 <tr className="border-b border-confectionery-pink/20">
                   <th className="text-left font-medium text-gray-500 pb-3">ID</th>
                   <th className="text-left font-medium text-gray-500 pb-3">Cliente</th>
-                  <th className="text-left font-medium text-gray-500 pb-3">Produto</th>
+                  <th className="text-left font-medium text-gray-500 pb-3">Data</th>
                   <th className="text-left font-medium text-gray-500 pb-3">Valor</th>
                   <th className="text-left font-medium text-gray-500 pb-3">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {pedidosRecentes.map((pedido) => (
-                  <tr key={pedido.id} className="border-b border-gray-100 hover:bg-confectionery-pink/5 animate-hover">
-                    <td className="py-4">{pedido.id}</td>
-                    <td className="py-4">{pedido.cliente}</td>
-                    <td className="py-4">{pedido.produto}</td>
-                    <td className="py-4">{pedido.valor}</td>
+                {recentes.length === 0 && (
+                  <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Sem pedidos.</td></tr>
+                )}
+                {recentes.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-100 hover:bg-confectionery-pink/5 animate-hover">
+                    <td className="py-4">#{String(p.id).padStart(3, '0')}</td>
+                    <td className="py-4">{p.cliente?.nome ?? '—'}</td>
+                    <td className="py-4">{new Date(p.data_pedido).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-4">{fmtBRL(Number(p.valor_total))}</td>
                     <td className="py-4">
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        pedido.status === 'Entregue' ? 'bg-green-100 text-green-800' : 
-                        pedido.status === 'Em Preparo' ? 'bg-blue-100 text-blue-800' : 
+                        p.status === 'Entregue' ? 'bg-green-100 text-green-800' :
+                        p.status === 'Cancelado' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {pedido.status}
-                      </span>
+                      }`}>{p.status}</span>
                     </td>
                   </tr>
                 ))}
@@ -175,10 +153,7 @@ const Dashboard = () => {
         </SimpleCard>
 
         <div className="space-y-6">
-          <SimpleCard
-            title="Produtos Finais (prontos para venda)"
-            actions={<Link to="/estoque" className="text-sm text-primary-foreground hover:underline">Ver estoque</Link>}
-          >
+          <SimpleCard title="Produtos Finais (prontos para venda)" actions={<Link to="/estoque" className="text-sm text-primary-foreground hover:underline">Ver estoque</Link>}>
             <div className="space-y-3">
               {finais.length === 0 && <p className="text-sm text-muted-foreground">Sem dados.</p>}
               {finais.map((p) => (
@@ -197,10 +172,7 @@ const Dashboard = () => {
               ))}
             </div>
           </SimpleCard>
-          <SimpleCard
-            title="Matérias-Primas (insumos)"
-            actions={<Link to="/materias-primas" className="text-sm text-primary-foreground hover:underline">Ver insumos</Link>}
-          >
+          <SimpleCard title="Matérias-Primas (insumos)" actions={<Link to="/materias-primas" className="text-sm text-primary-foreground hover:underline">Ver insumos</Link>}>
             <div className="space-y-3">
               {insumos.length === 0 && <p className="text-sm text-muted-foreground">Sem insumos cadastrados.</p>}
               {insumos.map((m) => (
