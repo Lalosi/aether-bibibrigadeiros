@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { config } from '@/lib/config';
 
 const Logo = ({ size = 'default' }: { size?: 'small' | 'default' | 'large' }) => {
   const sizeClasses = {
@@ -12,7 +13,7 @@ const Logo = ({ size = 'default' }: { size?: 'small' | 'default' | 'large' }) =>
     <div className="flex items-center gap-2">
       <img 
         src="/lovable-uploads/73d11f78-9223-4e00-bb4a-cc631802c552.png" 
-        alt="AETHER Logo" 
+        alt={`${config.appName} Logo`}
         className={`${sizeClasses[size]}`} 
       />
     </div>

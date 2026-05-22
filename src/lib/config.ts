@@ -6,12 +6,20 @@ const bool = (v: unknown, fallback = false): boolean => {
   return String(v).toLowerCase() === 'true' || v === '1';
 };
 
+const num = (v: unknown, fallback: number): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const str = (v: unknown, fallback: string): string => {
+  if (v === undefined || v === null || String(v).trim() === '') return fallback;
+  return String(v);
+};
+
 export const config = {
-  // Master switch for academic presentation behaviors:
-  //  - login bypass with password "teste"
-  //  - seed/fictional data fallback for BI charts
-  //  - educational POO/SQL popups on action buttons
-  presentationMode: bool(import.meta.env.VITE_PRESENTATION_MODE, true),
+  // Master switch for academic presentation behaviors.
+  // Defaults to FALSE in production — must be explicitly enabled.
+  presentationMode: bool(import.meta.env.VITE_PRESENTATION_MODE, false),
 
   // Sidebar visibility flags (default: visible)
   showLoja: bool(import.meta.env.VITE_SHOW_LOJA, true),
@@ -24,7 +32,14 @@ export const config = {
 
   // Bypass credentials used only when presentationMode is true.
   bypassEmail: 'teste@teste.com',
-  bypassPassword: 'teste',
+  bypassPassword: str(import.meta.env.VITE_PRESENTATION_PASSWORD, 'teste'),
+
+  // Business defaults
+  defaultCustoFixoPct: num(import.meta.env.VITE_DEFAULT_CUSTO_FIXO_PCT, 10),
+  defaultMargemPct: num(import.meta.env.VITE_DEFAULT_MARGEM_PCT, 100),
+
+  // App branding
+  appName: str(import.meta.env.VITE_APP_NAME, 'Aether'),
 } as const;
 
 export type AppConfig = typeof config;

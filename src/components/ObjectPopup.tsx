@@ -49,8 +49,10 @@ export const ObjectPopup = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden">
-        <DialogHeader className="bg-gradient-to-r from-confectionery-pink/20 via-confectionery-pink/10 to-transparent px-6 pt-6 pb-4 border-b border-confectionery-pink/20">
+      <DialogContent
+        className="p-0 overflow-hidden w-[min(95vw,720px)] min-w-[500px] max-h-[90vh] flex flex-col"
+      >
+        <DialogHeader className="bg-gradient-to-r from-confectionery-pink/20 via-confectionery-pink/10 to-transparent px-6 pt-6 pb-4 border-b border-confectionery-pink/20 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Boxes className="h-5 w-5 text-confectionery-pink" />
             <span className="text-muted-foreground font-normal">Classe:</span>
@@ -64,7 +66,7 @@ export const ObjectPopup = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-4 space-y-3">
+        <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
           {description && (
             <p className="text-xs text-muted-foreground">{description}</p>
           )}
@@ -106,14 +108,14 @@ export const ObjectPopup = ({
             </pre>
           </div>
 
-          <div className="flex justify-end pt-2">
+        </div>
+        <div className="flex justify-end px-6 py-3 border-t border-confectionery-pink/20 bg-white shrink-0">
             <Button
               onClick={() => onOpenChange(false)}
               className="bg-confectionery-pink hover:bg-confectionery-pink/80"
             >
               Fechar
             </Button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
