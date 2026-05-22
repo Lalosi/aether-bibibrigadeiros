@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const SERVICE_ROLE_KEY = Deno.env.get('AETHER_SERVICE_ROLE_KEY')!;
 
     // Validate caller and check that they are master or admin.
     const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
