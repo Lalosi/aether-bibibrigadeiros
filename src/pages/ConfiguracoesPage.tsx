@@ -136,30 +136,23 @@ const ConfiguracoesPage = () => {
       return;
     }
     setCreating(true);
-    // Preserve current session to restore after signUp (which auto-logs the new user)
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    // Supabase bloqueia signUp via client quando já existe sessão ativa.
-    // Faz signOut antes do signUp e restaura a sessão original em seguida.
-    await supabase.auth.signOut();
-    const { data, error } = await supabase.auth.signUp({
-      email: newEmail,
-      password: newPassword,
-      options: { data: { nome: newNome, role: newRole } },
+    // Cria o usuário via Edge Function (admin client com service_role),
+    // preservando a sessão do master atual.
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        email: newEmail,
+        password: newPassword,
+        nome: newNome,
+        role: newRole,
+      },
     });
-    // Restore the original session immediately
-    if (currentSession) {
-      await supabase.auth.setSession({
-        access_token: currentSession.access_token,
-        refresh_token: currentSession.refresh_token,
-      });
-    }
     setCreating(false);
-    if (error || !data.user) {
-      const msg = error?.message ?? 'Erro desconhecido';
-      if (/already/i.test(msg)) {
+    const errMsg = (error as any)?.message ?? (data as any)?.error;
+    if (error || errMsg) {
+      if (/already|exists|duplicate/i.test(String(errMsg))) {
         toast.error('E-mail já cadastrado.');
       } else {
-        toast.error('Erro ao criar usuário', { description: msg });
+        toast.error('Erro ao criar usuário', { description: String(errMsg ?? 'Erro desconhecido') });
       }
       return;
     }
