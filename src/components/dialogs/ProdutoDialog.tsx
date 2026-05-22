@@ -15,6 +15,7 @@ import { Database, Loader2, Plus, Trash2, Factory, Calculator } from 'lucide-rea
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { config } from '@/lib/config';
 
 const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório').max(100),
@@ -87,7 +88,10 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
     resolver: zodResolver(produtoSchema),
     defaultValues: {
       nome: '', categoria_id: '', preco_venda: 0, preco_custo: 0, qtd_estoque: 0, fornecedor: '',
-      tempo_producao_min: 0, margem_desejada_pct: 50, custo_fixo_pct: 10, valor_hora_trabalho: 25,
+      tempo_producao_min: 0,
+      margem_desejada_pct: config.defaultMargemPct,
+      custo_fixo_pct: config.defaultCustoFixoPct,
+      valor_hora_trabalho: 25,
     },
   });
 
@@ -127,8 +131,8 @@ export const ProdutoDialog = ({ open, onOpenChange, onSaved, onShowObject, produ
       qtd_estoque: produto?.qtd_estoque ?? 0,
       fornecedor: produto?.fornecedor ?? '',
       tempo_producao_min: Number(produto?.tempo_producao_min ?? 0),
-      margem_desejada_pct: Number(produto?.margem_desejada_pct ?? 50),
-      custo_fixo_pct: Number(produto?.custo_fixo_pct ?? 10),
+      margem_desejada_pct: Number(produto?.margem_desejada_pct ?? config.defaultMargemPct),
+      custo_fixo_pct: Number(produto?.custo_fixo_pct ?? config.defaultCustoFixoPct),
       valor_hora_trabalho: Number(
         produto?.valor_hora_trabalho ?? profileValorHora ?? 25,
       ),
