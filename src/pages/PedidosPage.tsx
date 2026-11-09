@@ -4,7 +4,9 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NovoPedidoDialog } from '@/components/dialogs/NovoPedidoDialog';
-import { ObjectPopup } from '@/components/ObjectPopup';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -75,10 +77,6 @@ const PedidosPage = () => {
   const [detalheItens, setDetalheItens] = useState<PedidoItemDetalhe[]>([]);
   const [detalheLoading, setDetalheLoading] = useState(false);
   const [toCancel, setToCancel] = useState<PedidoRow | null>(null);
-  const [popup, setPopup] = useState<{ title: string; cls: string; data: any } | null>(null);
-
-  const showObject = (title: string, cls: string, data: any) =>
-    setPopup({ title, cls, data });
 
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
@@ -161,7 +159,6 @@ const PedidosPage = () => {
       return;
     }
     toast.success(`Status atualizado para "${novo}"`);
-    showObject('Pedido Atualizado', 'Pedido', data);
     fetchPedidos();
   };
 
@@ -178,7 +175,6 @@ const PedidosPage = () => {
       toast.error('Erro ao cancelar', { description: error.message });
     } else {
       toast.success('Pedido cancelado!');
-      showObject('Pedido Cancelado', 'Pedido', data);
       fetchPedidos();
     }
     setToCancel(null);
@@ -294,7 +290,6 @@ const PedidosPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSaved={fetchPedidos}
-        onShowObject={showObject}
       />
 
       <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
@@ -314,38 +309,83 @@ const PedidosPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ObjectPopup
-        open={!!detalhe}
-        onOpenChange={(o) => !o && setDetalhe(null)}
-        title="Detalhes do Pedido"
-        className="Pedido"
-        data={detalhe ? {
-          id: detalhe.id,
-          cliente: detalhe.cliente?.nome ?? null,
-          cliente_id: detalhe.cliente_id,
-          data_pedido: new Date(detalhe.data_pedido).toLocaleString('pt-BR'),
-          valor_total: Number(detalhe.valor_total),
-          metodo_pagamento: detalhe.metodo_pagamento,
-          status: detalhe.status,
-          observacoes: detalhe.observacoes,
-          itens: detalheLoading
-            ? 'Carregando...'
-            : detalheItens.map((it) => ({
-                produto: it.produto?.nome ?? it.produto_nome ?? `#${it.id}`,
-                quantidade: Number(it.quantidade),
-                preco_unitario: Number(it.preco_unitario),
-                subtotal: Number(it.quantidade) * Number(it.preco_unitario),
-              })),
-        } : null}
-      />
+      <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detalhes do pedido #{detalhe?.id}</DialogTitle>
+          </DialogHeader>
+          {detalhe && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div>
+                  <p className="text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{detalhe.cliente?.nome ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Data</p>
+                  <p className="font-medium">{new Date(detalhe.data_pedido).toLocaleString('pt-BR')}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <p className="font-medium">{detalhe.status}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Pagamento</p>
+                  <p className="font-medium">{detalhe.metodo_pagamento ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Valor total</p>
+                  <p className="font-medium">
+                    {Number(detalhe.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+              </div>
 
-      <ObjectPopup
-        open={!!popup}
-        onOpenChange={(o) => !o && setPopup(null)}
-        title={popup?.title ?? ''}
-        className={popup?.cls ?? ''}
-        data={popup?.data ?? null}
-      />
+              {detalhe.observacoes && (
+                <div>
+                  <p className="text-muted-foreground">Observações</p>
+                  <p className="font-medium">{detalhe.observacoes}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-muted-foreground mb-1">Itens</p>
+                {detalheLoading ? (
+                  <p className="text-muted-foreground">Carregando...</p>
+                ) : detalheItens.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhum item.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-right">Unit.</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {detalheItens.map((it) => {
+                        const qtd = Number(it.quantidade);
+                        const unit = Number(it.preco_unitario);
+                        const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        return (
+                          <TableRow key={it.id}>
+                            <TableCell>{it.produto?.nome ?? it.produto_nome ?? `#${it.id}`}</TableCell>
+                            <TableCell className="text-right">{qtd}</TableCell>
+                            <TableCell className="text-right">{brl(unit)}</TableCell>
+                            <TableCell className="text-right">{brl(qtd * unit)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };

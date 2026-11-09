@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,8 +6,15 @@ import Logo from '@/components/Logo';
 
 const AcessoPendente = () => {
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, role } = useAuth();
   const email = (user as { email?: string } | null)?.email ?? '';
+
+  useEffect(() => {
+    if (role) {
+      const target = role === 'master' ? '/dashboard' : role === 'cliente' ? '/comprar' : '/pedidos';
+      navigate(target, { replace: true });
+    }
+  }, [role, navigate]);
 
   const handleLogout = async () => {
     await signOut();

@@ -30,10 +30,16 @@ interface Row {
   roleId?: string | number | null;
 }
 
-const ROLES: AppRole[] = ['funcionario', 'admin', 'master'];
+const ROLES: AppRole[] = ['cliente', 'funcionario', 'admin', 'master'];
 
 const roleBadge = (r: AppRole) =>
-  r === 'master' ? 'bg-purple-600' : r === 'admin' ? 'bg-blue-600' : 'bg-slate-500';
+  r === 'master'
+    ? 'bg-purple-600'
+    : r === 'admin'
+    ? 'bg-blue-600'
+    : r === 'cliente'
+    ? 'bg-pink-500'
+    : 'bg-slate-500';
 
 const ConfiguracoesPage = () => {
   const { role: currentRole } = useAuth();
@@ -69,7 +75,7 @@ const ConfiguracoesPage = () => {
       setLoading(false);
       return;
     }
-    const priority: AppRole[] = ['master', 'admin', 'funcionario'];
+    const priority: AppRole[] = ['master', 'admin', 'funcionario', 'cliente'];
     const profileMap = new Map<string, any>();
     for (const p of (profiles ?? []) as any[]) profileMap.set(p.id, p);
     // Enrich from joined profile data inside user_roles
@@ -116,9 +122,9 @@ const ConfiguracoesPage = () => {
 
   // Master: any role. Admin: funcionario|admin (no master).
   const allowedNewRoles: AppRole[] = isMaster
-    ? ['funcionario', 'admin', 'master']
+    ? ['cliente', 'funcionario', 'admin', 'master']
     : isAdmin
-    ? ['funcionario', 'admin']
+    ? ['cliente', 'funcionario', 'admin']
     : [];
 
   const handleCreateUser = async () => {
@@ -426,7 +432,7 @@ const ConfiguracoesPage = () => {
                   onChange={(e) => setEditRole(e.target.value as AppRole)}
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  {(isMaster ? ROLES : (['funcionario','admin'] as AppRole[])).map((r) => (
+                  {(isMaster ? ROLES : (['cliente','funcionario','admin'] as AppRole[])).map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>

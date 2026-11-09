@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ROLES = ['funcionario', 'admin', 'master'] as const;
+const ROLES = ['cliente', 'funcionario', 'admin', 'master'] as const;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const SERVICE_ROLE_KEY = Deno.env.get('AETHER_SERVICE_ROLE_KEY')!;
+    const SERVICE_ROLE_KEY =
+      Deno.env.get('AETHER_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { nome, role },
+      user_metadata: { nome },
     });
 
     if (createErr || !created.user) {
@@ -84,8 +85,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Aguarda a trigger handle_new_user processar (profile + role via metadata)
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // A trigger handle_new_user cria o profile e a role padrão (funcionario)
+    const { error: roleErr } = await admin
+      .from('user_roles').update({ role }).eq('user_id', created.user.id);
+
+    if (roleErr) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return new Response(JSON.stringify({ error: roleErr.message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({ ok: true, user_id: created.user.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,

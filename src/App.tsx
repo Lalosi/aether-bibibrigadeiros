@@ -40,14 +40,14 @@ const App = () => {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/acesso-pendente" element={<AcessoPendente />} />
             <Route path="/dashboard" element={<ProtectedRoute allow={["master"]}><Dashboard /></ProtectedRoute>} />
-            <Route path="/comprar" element={<ProtectedRoute><OrderPage /></ProtectedRoute>} />
+            <Route path="/comprar" element={<ProtectedRoute allow={["cliente","funcionario","admin","master"]}><OrderPage /></ProtectedRoute>} />
             <Route path="/estoque" element={<ProtectedRoute allow={["admin","master"]}><EstoquePage /></ProtectedRoute>} />
             <Route path="/materias-primas" element={<ProtectedRoute allow={["admin","master"]}><MateriasPrimasPage /></ProtectedRoute>} />
             <Route path="/pedidos" element={<ProtectedRoute allow={["funcionario","admin","master"]}><PedidosPage /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute allow={["funcionario","admin","master"]}><ClientesPage /></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute allow={["master"]}><RelatoriosPage /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute allow={["master"]}><ConfiguracoesPage /></ProtectedRoute>} />
-            <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute allow={["funcionario","admin","master"]}><PerfilPage /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, type AppRole } from '@/integrations/supabase/client';
 import { config } from '@/lib/config';
@@ -16,7 +17,7 @@ interface AuthContextValue {
   loading: boolean;
   isBypass: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, nome: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -30,6 +31,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<AppRole | null>(null);
   const [isBypass, setIsBypass] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Id of the user whose role lookup has finished; routes wait for it before deciding access.
+  const [roleUserId, setRoleUserId] = useState<string | null>(null);
 
   const fetchRole = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -39,12 +42,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .order('role', { ascending: true });
     if (error || !data?.length) {
       setRole(null);
+      setRoleUserId(userId);
       return;
     }
-    // Highest privilege wins: master > admin > funcionario
-    const priority: AppRole[] = ['master', 'admin', 'funcionario'];
+    // Highest privilege wins: master > admin > funcionario > cliente
+    const priority: AppRole[] = ['master', 'admin', 'funcionario', 'cliente'];
     const found = priority.find((r) => data.some((d) => d.role === r));
-    setRole(found ?? 'funcionario');
+    // Role desconhecida => sem acesso (nunca assume 'funcionario' por padrão)
+    setRole(found ?? null);
+    setRoleUserId(userId);
   }, []);
 
   useEffect(() => {
@@ -73,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (!localStorage.getItem(BYPASS_KEY)) {
         setUser(null);
         setRole(null);
+        setRoleUserId(null);
       }
     });
 
@@ -113,28 +120,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = useCallback<AuthContextValue['signUp']>(async (email, password, nome) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}/comprar`,
         data: { nome },
       },
     });
-    return { error: error?.message ?? null };
+    // Sem sessão (e sem erro) => Supabase exige confirmação por e-mail antes de logar.
+    return { error: error?.message ?? null, needsConfirmation: !error && !data.session };
   }, []);
 
   const signOut = useCallback(async () => {
     localStorage.removeItem(BYPASS_KEY);
     setIsBypass(false);
     setRole(null);
+    setRoleUserId(null);
     setUser(null);
     await supabase.auth.signOut();
   }, []);
 
+  const roleLoading = !!user && !isBypass && roleUserId !== user.id;
+
   return (
     <AuthContext.Provider
-      value={{ user, session, role, loading, isBypass, signIn, signUp, signOut }}
+      value={{ user, session, role, loading: loading || roleLoading, isBypass, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>
@@ -164,6 +175,8 @@ export const ProtectedRoute: React.FC<{
     return null;
   }
   if (allow && role && !allow.includes(role)) {
+    // Cliente só tem a loja: qualquer outra rota leva de volta para /comprar
+    if (role === 'cliente') return <Navigate to="/comprar" replace />;
     return (
       <div className="min-h-screen flex items-center justify-center p-8 text-center">
         <div>
@@ -180,4 +193,4 @@ export const ProtectedRoute: React.FC<{
     return null;
   }
   return <>{children}</>;
-};
+};

@@ -12,90 +12,16 @@ import {
   X, 
   ArrowRight,
   Check,
-  FilterIcon
+  FilterIcon,
+  LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useCardapio } from '@/hooks/useCardapio';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-
-// Dados de exemplo
-const categorias = [
-  { id: 'todos', nome: 'Todos' },
-  { id: 'bolos', nome: 'Bolos' },
-  { id: 'tortas', nome: 'Tortas' },
-  { id: 'doces', nome: 'Doces' },
-  { id: 'cupcakes', nome: 'Cupcakes' },
-  { id: 'bebidas', nome: 'Bebidas' },
-];
-
-const produtos = [
-  {
-    id: 1,
-    nome: 'Bolo de Chocolate',
-    descricao: 'Bolo fofinho de chocolate com cobertura de ganache',
-    preco: 'R$ 45,00',
-    precoUnitario: 45.0,
-    imagem: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=500',
-    disponivel: true,
-    categoria: 'bolos',
-    destaque: true
-  },
-  {
-    id: 2,
-    nome: 'Brigadeiros Gourmet',
-    descricao: 'Caixa com 12 brigadeiros gourmet em diversos sabores',
-    preco: 'R$ 25,00',
-    precoUnitario: 25.0,
-    imagem: 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?q=80&w=500',
-    disponivel: true,
-    categoria: 'doces',
-    destaque: false
-  },
-  {
-    id: 3,
-    nome: 'Torta de Morango',
-    descricao: 'Torta fresca de morango com creme de baunilha',
-    preco: 'R$ 38,00',
-    precoUnitario: 38.0,
-    imagem: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?q=80&w=500',
-    disponivel: true,
-    categoria: 'tortas',
-    destaque: true
-  },
-  {
-    id: 4,
-    nome: 'Cupcake Red Velvet',
-    descricao: 'Cupcake red velvet com cobertura de cream cheese',
-    preco: 'R$ 8,00',
-    precoUnitario: 8.0,
-    imagem: 'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?q=80&w=500',
-    disponivel: true,
-    categoria: 'cupcakes',
-    destaque: false
-  },
-  {
-    id: 5,
-    nome: 'Cheesecake de Frutas Vermelhas',
-    descricao: 'Cheesecake cremoso com calda de frutas vermelhas',
-    preco: 'R$ 42,00',
-    precoUnitario: 42.0,
-    imagem: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?q=80&w=500',
-    disponivel: true,
-    categoria: 'tortas',
-    destaque: false
-  },
-  {
-    id: 6,
-    nome: 'Café Especial',
-    descricao: 'Café especial torrado e moído na hora',
-    preco: 'R$ 7,50',
-    precoUnitario: 7.5,
-    imagem: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?q=80&w=500',
-    disponivel: true,
-    categoria: 'bebidas',
-    destaque: false
-  }
-];
 
 // Tipo para os itens do carrinho
 interface CartItem {
@@ -109,12 +35,31 @@ interface CartItem {
 
 const OrderPage = () => {
   const { toast } = useToast();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const {
+    categorias: categoriasCardapio,
+    itens: produtos,
+    sabores,
+    isLoading,
+    error,
+    refetch,
+  } = useCardapio();
+  const categorias = [{ id: 'todos', nome: 'Todos' }, ...categoriasCardapio];
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('todos');
   const [busca, setBusca] = useState('');
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [carrinho, setCarrinho] = useState<CartItem[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
+
+  const categoriaBrigadeiros = categorias.find((c) => c.nome.toLowerCase() === 'brigadeiros')?.id;
 
   // Filtra produtos por categoria e busca
   const produtosFiltrados = produtos.filter(produto => {
@@ -211,22 +156,40 @@ const OrderPage = () => {
     };
   }, []);
 
-  // Finalizar pedido
-  const finalizarPedido = () => {
-    if (carrinho.length === 0) return;
-    
+  // Finalizar pedido — grava em `pedidos` via função do banco (criar_pedido_loja)
+  const finalizarPedido = async () => {
+    if (carrinho.length === 0 || finalizando) return;
+
+    setFinalizando(true);
+    const p_itens = carrinho.map((it) => ({
+      cardapio_item_id: it.id,
+      quantidade: it.quantidade,
+    }));
+    const { data, error } = await supabase.rpc('criar_pedido_loja', { p_itens });
+    setFinalizando(false);
+
+    if (error) {
+      toast({
+        title: 'Não foi possível finalizar o pedido',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     toast({
-      title: "Pedido finalizado!",
-      description: "Seu pedido foi registrado com sucesso.",
+      title: 'Pedido realizado!',
+      description: `Seu pedido #${data} foi registrado com sucesso.`,
       action: (
         <Button variant="outline" size="sm">
           <Check className="h-4 w-4" /> Ok
         </Button>
       ),
     });
-    
+
     setCarrinho([]);
     setCarrinhoAberto(false);
+    refetch();
   };
 
   return (
@@ -278,7 +241,16 @@ const OrderPage = () => {
               )}
             </button>
             
-            <button 
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-full hover:bg-destructive/10 text-destructive transition-colors"
+              aria-label="Sair"
+              title="Sair"
+            >
+              <LogOut size={20} />
+            </button>
+
+            <button
               className="flex md:hidden p-2"
               onClick={toggleFilters}
               aria-label="Filtros"
@@ -355,7 +327,8 @@ const OrderPage = () => {
       </div>
       
       <main className="max-w-7xl mx-auto p-4 md:p-6">
-        {/* Banner/Destaques */}
+        {/* Banner/Destaques (só aparece quando há itens marcados como destaque) */}
+        {produtosDestaque.length > 0 && (
         <section className="mb-6 md:mb-10">
           <h2 className="text-xl md:text-2xl font-medium mb-3 md:mb-4">Destaques</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -374,12 +347,42 @@ const OrderPage = () => {
             ))}
           </div>
         </section>
-        
+        )}
+
+        {/* Sabores de brigadeiro */}
+        {sabores.length > 0 &&
+          (categoriaSelecionada === 'todos' || categoriaSelecionada === categoriaBrigadeiros) && (
+            <section className="mb-6 md:mb-8">
+              <h2 className="text-lg md:text-xl font-medium mb-2">Sabores de brigadeiro</h2>
+              <div className="flex flex-wrap gap-2">
+                {sabores.map((sabor) => (
+                  <span
+                    key={sabor}
+                    className="px-3 py-1 rounded-full bg-confectionery-pink/30 text-sm"
+                  >
+                    {sabor}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
         {/* Lista de Produtos */}
         <section>
           <h2 className="text-xl md:text-2xl font-medium mb-3 md:mb-4">Nossos Produtos</h2>
           
-          {produtosFiltrados.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-6 md:py-10">
+              <p className="text-gray-500">Carregando cardápio...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-6 md:py-10">
+              <p className="text-gray-500">Não foi possível carregar o cardápio.</p>
+              <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : produtosFiltrados.length === 0 ? (
             <div className="text-center py-6 md:py-10">
               <p className="text-gray-500">Nenhum produto encontrado.</p>
               <Button 
@@ -466,8 +469,9 @@ const OrderPage = () => {
                   <Button 
                     className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground btn-hover"
                     onClick={finalizarPedido}
+                    disabled={finalizando}
                   >
-                    Finalizar Pedido <ArrowRight size={16} className="ml-2" />
+                    {finalizando ? 'Finalizando...' : <>Finalizar Pedido <ArrowRight size={16} className="ml-2" /></>}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -538,8 +542,9 @@ const OrderPage = () => {
                   <Button 
                     className="w-full bg-confectionery-pink hover:bg-confectionery-pink/80 text-primary-foreground btn-hover"
                     onClick={finalizarPedido}
+                    disabled={finalizando}
                   >
-                    Finalizar Pedido <ArrowRight size={16} className="ml-2" />
+                    {finalizando ? 'Finalizando...' : <>Finalizar Pedido <ArrowRight size={16} className="ml-2" /></>}
                   </Button>
                   <Button 
                     variant="outline" 

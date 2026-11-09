@@ -47,6 +47,7 @@ const Login = () => {
     //   master  → /dashboard
     //   admin   → /pedidos
     //   funcionario → /pedidos
+    //   cliente → /comprar
     //   sem role → /acesso-pendente
     let target = '/dashboard';
     try {
@@ -61,6 +62,8 @@ const Login = () => {
           target = '/pedidos';
         } else if (roles.includes('funcionario')) {
           target = '/pedidos';
+        } else if (roles.includes('cliente')) {
+          target = '/comprar';
         } else {
           target = '/acesso-pendente';
         }

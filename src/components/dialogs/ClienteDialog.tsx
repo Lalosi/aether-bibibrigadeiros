@@ -41,12 +41,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: (saved?: ClienteRow) => void;
-  onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
   cliente?: ClienteRow | null;
   defaultNome?: string;
 }
 
-export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, cliente, defaultNome }: Props) => {
+export const ClienteDialog = ({ open, onOpenChange, onSaved, cliente, defaultNome }: Props) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isEdit = !!cliente;
 
@@ -81,13 +80,11 @@ export const ClienteDialog = ({ open, onOpenChange, onSaved, onShowObject, clien
     if (isEdit && cliente) {
       const { error: e } = await supabase.from('clientes').update(payload).eq('id', cliente.id);
       error = e;
-      onShowObject?.('Cliente Atualizado', 'Cliente', { id: cliente.id, ...payload });
     } else {
       const { data: inserted, error: e } = await supabase.from('clientes').insert(payload).select().single();
       error = e;
       if (!e && inserted) {
         createdRow = inserted as any;
-        onShowObject?.('Cliente Cadastrado', 'Cliente', inserted as any);
       }
     }
 

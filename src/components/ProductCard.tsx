@@ -27,10 +27,16 @@ const ProductCard = ({
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden card-hover animate-scale-in">
       <div className="relative h-48 overflow-hidden">
-        <img 
-          src={imagem} 
-          alt={nome} 
-          className="w-full h-full object-cover transition-transform hover:scale-105 duration-500" 
+        <img
+          src={imagem}
+          alt={nome}
+          className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.src !== window.location.origin + '/placeholder.svg') {
+              img.src = '/placeholder.svg';
+            }
+          }}
         />
         <div className="absolute top-2 right-2">
           <span className="bg-white/80 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded-full">

@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL =
-  (import.meta.env.VITE_SUPABASE_URL as string) ||
-  'https://giqurnhijhrvhlunpbms.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-const SUPABASE_ANON_KEY =
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpcXVybmhpamhydmhsdW5wYm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDU1NzAsImV4cCI6MjA5Mjk4MTU3MH0.Vl6rtoMp6rnRVELPDWJSoeE1UPSwKNsc7ItjzNuQxno';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -16,4 +15,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-export type AppRole = 'funcionario' | 'admin' | 'master';
+export type AppRole = 'cliente' | 'funcionario' | 'admin' | 'master';
+
+/** Roles da equipe (acesso ao painel). `cliente` só acessa a loja. */
+export const STAFF_ROLES: AppRole[] = ['funcionario', 'admin', 'master'];

@@ -4,7 +4,6 @@ import SimpleCard from '@/components/SimpleCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClienteDialog, type ClienteRow } from '@/components/dialogs/ClienteDialog';
-import { ObjectPopup } from '@/components/ObjectPopup';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -27,17 +26,6 @@ const ClientesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClienteRow | null>(null);
   const [toDelete, setToDelete] = useState<ClienteRow | null>(null);
-  const [objPopupOpen, setObjPopupOpen] = useState(false);
-  const [objPopupTitle, setObjPopupTitle] = useState('');
-  const [objPopupClass, setObjPopupClass] = useState('');
-  const [objPopupData, setObjPopupData] = useState<Record<string, any> | null>(null);
-
-  const showObject = (title: string, className: string, data: Record<string, any>) => {
-    setObjPopupTitle(title);
-    setObjPopupClass(className);
-    setObjPopupData(data);
-    setObjPopupOpen(true);
-  };
 
   const fetchClientes = useCallback(async () => {
     setLoading(true);
@@ -73,7 +61,6 @@ const ClientesPage = () => {
       toast.error('Erro ao excluir', { description: error.message });
     } else {
       toast.success('Cliente excluído!');
-      showObject('Cliente Excluído', 'Cliente', { id: toDelete.id, nome: toDelete.nome });
       fetchClientes();
     }
     setToDelete(null);
@@ -178,7 +165,6 @@ const ClientesPage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSaved={fetchClientes}
-        onShowObject={showObject}
         cliente={editing}
       />
 
@@ -198,14 +184,6 @@ const ClientesPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ObjectPopup
-        open={objPopupOpen}
-        onOpenChange={setObjPopupOpen}
-        title={objPopupTitle}
-        className={objPopupClass}
-        data={objPopupData}
-      />
     </MainLayout>
   );
 };

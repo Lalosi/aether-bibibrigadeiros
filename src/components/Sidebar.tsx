@@ -51,7 +51,7 @@ const Sidebar = () => {
     { name: 'Relatórios', path: '/relatorios', icon: FileText, show: config.showRelatorios, allow: ['master'] },
     { name: 'Clientes', path: '/clientes', icon: Users, show: config.showClientes, allow: ['funcionario', 'admin', 'master'] },
     { name: 'Pedidos', path: '/pedidos', icon: ShoppingCart, show: config.showPedidos, allow: ['funcionario', 'admin', 'master'] },
-    { name: 'Loja', path: '/comprar', icon: Store, show: config.showLoja, allow: ['master'] },
+    { name: 'Loja', path: '/comprar', icon: Store, show: config.showLoja, allow: ['cliente', 'master'] },
   ];
 
   const visible = items.filter((i) => i.show && (!role || i.allow.includes(role)));

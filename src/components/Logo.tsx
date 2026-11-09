@@ -12,7 +12,7 @@ const Logo = ({ size = 'default' }: { size?: 'small' | 'default' | 'large' }) =>
   return (
     <div className="flex items-center gap-2">
       <img 
-        src="/lovable-uploads/73d11f78-9223-4e00-bb4a-cc631802c552.png" 
+        src="/lovable-uploads/aether-logo.png"
         alt={`${config.appName} Logo`}
         className={`${sizeClasses[size]}`} 
       />

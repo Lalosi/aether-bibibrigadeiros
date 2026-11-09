@@ -37,10 +37,9 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  onShowObject?: (title: string, className: string, data: Record<string, any>) => void;
 }
 
-export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: Props) => {
+export const NovoPedidoDialog = ({ open, onOpenChange, onSaved }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientes, setClientes] = useState<ClienteOption[]>([]);
   const [produtos, setProdutos] = useState<ProdutoOption[]>([]);
@@ -178,7 +177,6 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     }
     setIsSubmitting(false);
     toast.success('Pedido criado!');
-    onShowObject?.('Pedido Cadastrado', 'Pedido', { ...(inserted as any), itens: itemsPayload });
     onSaved();
     onOpenChange(false);
   };
@@ -192,7 +190,7 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
             <Database className="h-5 w-5 text-confectionery-pink" /> Novo Pedido
           </DialogTitle>
           <DialogDescription>
-            🧩 Instancia um novo objeto <code className="bg-muted px-1 rounded">Pedido</code> e o persiste no banco.
+            Preencha os dados do pedido e os itens.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -362,4 +360,4 @@ export const NovoPedidoDialog = ({ open, onOpenChange, onSaved, onShowObject }: 
     />
     </>
   );
-};
+};

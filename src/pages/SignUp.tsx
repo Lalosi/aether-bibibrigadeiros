@@ -38,14 +38,23 @@ const SignUp = () => {
     }
 
     setSubmitting(true);
-    const { error } = await signUp(email, password, name);
+    const { error, needsConfirmation } = await signUp(email, password, name);
     setSubmitting(false);
     if (error) {
       toast({ title: 'Erro ao cadastrar', description: error, variant: 'destructive' });
       return;
     }
+    if (needsConfirmation) {
+      // Conta criada, mas ainda não logada: precisa confirmar pelo e-mail.
+      toast({
+        title: 'Confirme seu e-mail',
+        description: 'Enviamos um link de confirmação. Confirme para poder entrar.',
+      });
+      navigate('/login');
+      return;
+    }
     toast({ title: 'Conta criada', description: 'Bem-vindo ao Aether!' });
-    navigate('/dashboard');
+    navigate('/comprar');
   };
 
   return (
